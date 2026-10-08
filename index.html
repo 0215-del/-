@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ケアプラン連携システム トラブルナレッジ検索</title>
+  <!-- Tailwind CSS (デザインフレームワーク) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome (アイコンライブラリ) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
+
+  <!-- ヘッダー -->
+  <header class="bg-gradient-to-r from-teal-700 to-emerald-600 text-white shadow-md">
+    <div class="max-w-4xl mx-auto px-4 py-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-2">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center justify-center md:justify-start gap-3">
+          <i class="fa-solid fa-headset text-emerald-200"></i>
+          ケアプラン連携 トラブル検索
+        </h1>
+        <p class="text-teal-100 text-xs md:text-sm mt-1">エラーコード・過去事例・現場対応マニュアル</p>
+      </div>
+      <div id="statusBadge" class="bg-teal-800/60 border border-teal-400/40 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-100 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="statusText">通信準備中</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 -mt-4">
+    
+    <!-- 検索ボックス -->
+    <div class="bg-white rounded-2xl shadow-xl p-4 md:p-6 mb-6 border border-slate-100 backdrop-blur-sm">
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+          <i class="fa-solid fa-magnifying-glass text-lg"></i>
+        </div>
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="エラーコード、文章、単語（例: パスワード、証明書）で検索..." 
+          oninput="filterData()"
+          class="w-full pl-11 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all duration-200 shadow-inner"
+        >
+        <button id="clearBtn" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-circle-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex justify-between items-center mt-3 pt-2 text-xs text-slate-500 border-t border-slate-100">
+        <div id="stats" class="font-medium">検索準備中...</div>
+        <div class="text-slate-400 hidden sm:block">※スプレッドシート更新で自動反映</div>
+      </div>
+    </div>
+
+    <!-- 結果カードリスト -->
+    <div id="cardList" class="space-y-4">
+      <div class="text-center py-12 bg-white rounded-2xl shadow-sm border border-slate-200/60">
+        <i class="fa-solid fa-spinner fa-spin text-3xl text-teal-600 mb-3"></i>
+        <p class="text-slate-500 text-sm font-medium">データを読み込み中...</p>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbw4CR4Yh79rbVznHUClo5u89_0Ub28A55E_dI3w7vlxKmgjUf0IbfwZBpBppvm7G2M0BQ/exec";
+
+    let errorData = [];
+
+    // データ取得
+    async function fetchData() {
+      try {
+        const response = await fetch(API_URL);
+        errorData = await response.json();
+        
+        document.getElementById('statusBadge').className = "bg-emerald-900/60 border border-emerald-400/40 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-200 flex items-center gap-2";
+        document.getElementById('statusText').textContent = "接続完了";
+
+        renderCards(errorData);
+      } catch (error) {
+        document.getElementById('statusBadge').className = "bg-rose-900/60 border border-rose-400/40 px-3 py-1.5 rounded-full text-xs font-medium text-rose-200 flex items-center gap-2";
+        document.getElementById('statusText').textContent = "通信エラー";
+        document.getElementById('cardList').innerHTML = `
+          <div class="text-center py-12 bg-rose-50 rounded-2xl border border-rose-200 text-rose-700 p-6">
+            <i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i>
+            <p class="font-bold">データの読み込みに失敗しました</p>
+            <p class="text-xs mt-1 text-rose-600">GASのアクセス権限またはURLをご確認ください。</p>
+          </div>
+        `;
+      }
+    }
+
+    // カード描画
+    function renderCards(data) {
+      const list = document.getElementById('cardList');
+      const stats = document.getElementById('stats');
+      list.innerHTML = '';
+      stats.innerHTML = `該当件数: <span class="font-bold text-teal-700 text-sm">${data.length}</span> 件`;
+
+      if (data.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-12 bg-white rounded-2xl border border-slate-200 p-6">
+            <i class="fa-solid fa-file-circle-question text-3xl text-slate-300 mb-3"></i>
+            <p class="font-bold text-slate-600">該当するトラブル情報が見つかりませんでした</p>
+            <p class="text-xs text-slate-400 mt-1">別のキーワードでお試しください。</p>
+          </div>
+        `;
+        return;
+      }
+
+      data.forEach((rawItem, index) => {
+        const item = {
+          code: rawItem["エラーコード"] || rawItem["code"] || "",
+          title: rawItem["エラー内容"] || rawItem["title"] || "",
+          cause: rawItem["主な原因"] || rawItem["cause"] || "",
+          solution: rawItem["対処方法・ご案内ステップ"] || rawItem["solution"] || "",
+          category: rawItem["カテゴリ"] || rawItem["category"] || "",
+          memo: rawItem["社内ナレッジ・過去事例"] || rawItem["memo"] || ""
+        };
+
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 md:p-6 hover:shadow-md transition-shadow duration-200 relative overflow-hidden";
+
+        card.innerHTML = `
+          <!-- タグ・エラーコード -->
+          <div class="flex flex-wrap items-center gap-2 mb-3">
+            ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200/60"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
+            ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200/60"><i class="fa-solid fa-bug text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
+          </div>
+
+          <!-- タイトル -->
+          <h2 class="text-base md:text-lg font-bold text-slate-800 mb-4 leading-snug">
+            ${escapeHtml(item.title)}
+          </h2>
+
+          <!-- 主な原因 -->
+          ${item.cause ? `
+            <div class="mb-3.5 bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+              <div class="text-xs font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
+                <i class="fa-solid fa-circle-info text-amber-500"></i> 主な原因
+              </div>
+              <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${escapeHtml(item.cause)}</div>
+            </div>
+          ` : ''}
+
+          <!-- 対処方法 -->
+          ${item.solution ? `
+            <div class="mb-3.5 bg-emerald-50/60 rounded-xl p-3.5 border border-emerald-100/80 relative group">
+              <div class="flex justify-between items-center mb-1.5">
+                <div class="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                  <i class="fa-solid fa-circle-check text-emerald-600"></i> 対処方法・ご案内手順
+                </div>
+                <button onclick="copyToClipboard('${escapeJs(item.solution)}', this)" class="text-[11px] bg-white text-emerald-700 px-2 py-0.5 rounded border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1 shadow-sm">
+                  <i class="fa-regular fa-copy"></i> コピー
+                </button>
+              </div>
+              <div class="text-xs md:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">${escapeHtml(item.solution)}</div>
+            </div>
+          ` : ''}
+
+          <!-- 過去事例・メモ -->
+          ${item.memo ? `
+            <div class="bg-amber-50/60 rounded-xl p-3.5 border border-amber-200/60">
+              <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
+                <i class="fa-solid fa-lightbulb text-amber-600"></i> 社内ナレッジ・過去事例
+              </div>
+              <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap">${escapeHtml(item.memo)}</div>
+            </div>
+          ` : ''}
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    // 検索フィルタ
+ // 検索フィルタ（エラーコード と タイトル/エラー内容 のみで検索）
+    function filterData() {
+      const input = document.getElementById('searchInput');
+      const clearBtn = document.getElementById('clearBtn');
+      const query = input.value.toLowerCase().trim();
+
+      // 入力文字の有無でクリアボタンを表示/非表示
+      clearBtn.classList.toggle('hidden', !query);
+
+      // 検索窓が空の場合は全データを表示
+      if (!query) {
+        renderCards(errorData);
+        return;
+      }
+
+      // エラーコード または タイトル のどちらかにマッチするものだけを抽出
+      const filtered = errorData.filter(rawItem => {
+        const code = (rawItem["エラーコード"] || rawItem["code"] || "").toLowerCase();
+        const title = (rawItem["エラー内容"] || rawItem["title"] || "").toLowerCase();
+
+        return code.includes(query) || title.includes(query);
+      });
+
+      renderCards(filtered);
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      filterData();
+    }
+
+    // テキストコピー機能
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> 完了!`;
+        btn.classList.add('bg-emerald-100');
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.classList.remove('bg-emerald-100');
+        }, 1500);
+      });
+    }
+
+    // エスケープ処理
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+    }
+
+    function escapeJs(str) {
+      if (!str) return '';
+      return str.replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\n/g, '\\n');
+    }
+
+    // 初期化
+    fetchData();
+  </script>
+
+</body>
+</html>
