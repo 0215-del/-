@@ -180,31 +180,37 @@
     }
 
     // 検索フィルタ
- // 検索フィルタ（エラーコード と タイトル/エラー内容 のみで検索）
+// 検索フィルタ（エラーコード・タイトル・拡張子等で検索）
     function filterData() {
       const input = document.getElementById('searchInput');
       const clearBtn = document.getElementById('clearBtn');
       const query = input.value.toLowerCase().trim();
 
-      // 入力文字の有無でクリアボタンを表示/非表示
       clearBtn.classList.toggle('hidden', !query);
 
-      // 検索窓が空の場合は全データを表示
       if (!query) {
         renderCards(errorData);
         return;
       }
 
-      // エラーコード または タイトル のどちらかにマッチするものだけを抽出
       const filtered = errorData.filter(rawItem => {
         const code = (rawItem["エラーコード"] || rawItem["code"] || "").toLowerCase();
         const title = (rawItem["エラー内容"] || rawItem["title"] || "").toLowerCase();
+        const solution = (rawItem["対処方法"] || rawItem["solution"] || "").toLowerCase();
+        const memo = (rawItem["社内ナレッジ"] || rawItem["memo"] || "").toLowerCase();
 
-        return code.includes(query) || title.includes(query);
+        // 1. コードまたはタイトルにマッチするかチェック
+        const matchTitleOrCode = code.includes(query) || title.includes(query);
+
+        // 2. 対処方法やメモに含まれる拡張子・キーワード（csv, pdf, png, txt等）にマッチするかチェック
+        const matchExtension = solution.includes(query) || memo.includes(query);
+
+        return matchTitleOrCode || matchExtension;
       });
 
       renderCards(filtered);
     }
+    
 
     function clearSearch() {
       document.getElementById('searchInput').value = '';
