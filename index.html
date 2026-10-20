@@ -9,61 +9,100 @@
   <!-- Font Awesome (アイコンライブラリ) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    :root { color-scheme: light; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background:
+        radial-gradient(ellipse at top left, rgba(204, 251, 241, .45), transparent 38rem),
+        #f4f7f8;
     }
+    button, input { font: inherit; }
+    button:focus-visible, input:focus-visible { outline: 3px solid rgba(13, 148, 136, .35); outline-offset: 2px; }
+    .system-tab[aria-pressed="true"] { background:#0f766e; color:#fff; border-color:#0f766e; box-shadow:0 4px 12px rgba(15,118,110,.18); }
+    .system-tab[aria-pressed="false"] { background:#fff; color:#475569; border-color:#e2e8f0; }
+    .quick-search { transition: background-color .15s ease, transform .15s ease; }
+    .quick-search:hover { transform: translateY(-1px); }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
+<body class="text-slate-800 min-h-screen pb-12">
 
   <!-- ヘッダー -->
-  <header class="bg-gradient-to-r from-teal-700 to-emerald-600 text-white shadow-md">
-    <div class="max-w-4xl mx-auto px-4 py-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-2">
-      <div>
-        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center justify-center md:justify-start gap-3">
-          <i class="fa-solid fa-headset text-emerald-200"></i>
-          ケアプラン連携 トラブル検索
-        </h1>
-        <p class="text-teal-100 text-xs md:text-sm mt-1">エラーコード・過去事例・現場対応マニュアル</p>
+  <header class="bg-gradient-to-r from-teal-950 via-teal-800 to-emerald-800 text-white shadow-lg">
+    <div class="max-w-6xl mx-auto px-4 py-7 md:py-9 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+      <div class="flex items-center gap-4">
+        <span class="h-12 w-12 shrink-0 rounded-2xl bg-white/10 ring-1 ring-white/20 flex items-center justify-center">
+          <i class="fa-solid fa-book-medical text-2xl text-teal-100"></i>
+        </span>
+        <div>
+          <h1 class="text-xl md:text-3xl font-extrabold tracking-tight">介護の手続き・トラブル検索</h1>
+          <p class="text-teal-100 text-sm mt-1">ケアプランデータ連携システム と 介護情報基盤</p>
+        </div>
       </div>
-      <div id="statusBadge" class="bg-teal-800/60 border border-teal-400/40 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-100 flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span id="statusText">通信準備中</span>
+      <div id="statusBadge" class="bg-white/10 border border-white/20 px-3.5 py-2 rounded-full text-xs font-medium text-teal-50 flex items-center gap-2">
+        <span id="statusDot" class="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></span>
+        <span id="statusText">データを確認中</span>
       </div>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 -mt-4">
+  <main class="max-w-6xl mx-auto px-4 -mt-5 md:-mt-6">
     
     <!-- 検索ボックス -->
-    <div class="bg-white rounded-2xl shadow-xl p-4 md:p-6 mb-6 border border-slate-100 backdrop-blur-sm">
+    <section class="bg-white rounded-3xl shadow-xl shadow-slate-900/5 p-5 md:p-7 mb-6 border border-white">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+        <div>
+          <p class="text-[11px] font-bold tracking-[.16em] text-teal-700 uppercase">Knowledge search</p>
+          <h2 class="text-lg md:text-xl font-bold text-slate-900 mt-1">知りたいことを検索</h2>
+          <p class="text-sm text-slate-500 mt-1">質問・原因・手順・分類から探せます。</p>
+        </div>
+        <button id="refreshBtn" onclick="fetchData()" class="self-start sm:self-auto inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-teal-800 transition-colors">
+          <i class="fa-solid fa-rotate-right"></i> 最新データを読み込む
+        </button>
+      </div>
       <div class="relative">
-        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-700">
           <i class="fa-solid fa-magnifying-glass text-lg"></i>
         </div>
         <input 
           type="text" 
           id="searchInput" 
-          placeholder="キーワードで検索（例: 初回登録、証明書、マイナアプリ、ケアプラン）..."
+          aria-label="検索キーワード"
+          placeholder="例：初回登録、電子証明書、CSV送信、エラーコード"
           oninput="filterData()"
-          class="w-full pl-11 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all duration-200 shadow-inner"
+          class="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base md:text-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all duration-200"
         >
-        <button id="clearBtn" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600">
+        <button id="clearBtn" aria-label="検索語を消去" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 px-4 items-center text-slate-400 hover:text-slate-700">
           <i class="fa-solid fa-circle-xmark text-lg"></i>
         </button>
       </div>
 
-      <div class="flex justify-between items-center mt-3 pt-2 text-xs text-slate-500 border-t border-slate-100">
-        <div id="stats" class="font-medium">検索準備中...</div>
-        <div class="text-slate-400 hidden sm:block">※スプレッドシート更新で自動反映</div>
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        <span class="text-xs font-semibold text-slate-500 mr-1">よく使う検索</span>
+        <button class="quick-search rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100" onclick="quickSearch('初期設定')">初期設定</button>
+        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('電子証明書')">電子証明書</button>
+        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('CSV')">CSV</button>
+        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('ログイン')">ログイン</button>
       </div>
-    </div>
+
+      <div class="mt-6 pt-5 border-t border-slate-100">
+        <div class="text-xs font-semibold text-slate-500 mb-2.5">検索する情報</div>
+        <div class="flex flex-wrap gap-2" role="group" aria-label="検索対象システム">
+          <button id="systemAll" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="true" onclick="setSystemFilter('all')">すべて</button>
+          <button id="systemPlan" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('plan')">ケアプランデータ連携</button>
+          <button id="systemKiban" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('kiban')">介護情報基盤</button>
+        </div>
+      </div>
+      <div class="mt-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm">
+        <div id="stats" class="font-semibold text-slate-700">検索準備中...</div>
+        <div class="text-xs text-slate-400">スプレッドシートの更新内容は読み込み直すと反映されます</div>
+      </div>
+    </section>
 
     <!-- 結果カードリスト -->
-    <div id="cardList" class="space-y-4">
-      <div class="text-center py-12 bg-white rounded-2xl shadow-sm border border-slate-200/60">
-        <i class="fa-solid fa-spinner fa-spin text-3xl text-teal-600 mb-3"></i>
-        <p class="text-slate-500 text-sm font-medium">データを読み込み中...</p>
+    <div id="cardList" class="space-y-4 pb-8">
+      <div class="text-center py-16 bg-white rounded-3xl shadow-sm border border-slate-200/70">
+        <i class="fa-solid fa-spinner fa-spin text-3xl text-teal-700 mb-3"></i>
+        <p class="text-slate-600 text-sm font-semibold">データを読み込み中...</p>
       </div>
     </div>
 
@@ -73,6 +112,18 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbw4CR4Yh79rbVznHUClo5u89_0Ub28A55E_dI3w7vlxKmgjUf0IbfwZBpBppvm7G2M0BQ/exec";
 
     let errorData = [];
+    let currentSystem = 'all';
+
+    const setupSequence = {
+      'KIB-SET-001': { order: 10, label: '初期設定 1/4' },
+      'KIB-SET-004': { order: 20, label: '初期設定 2/4' },
+      'KIB-SET-005': { order: 30, label: '初期設定 3/4' },
+      'KIB-SET-003': { order: 40, label: '初期設定 4/4・証明書' },
+      'KIB-SET-006': { order: 50, label: '初期設定 4/4・WEBサービス登録' },
+      'KIB-SET-007': { order: 60, label: '初期設定 4/4・端末連携' },
+      'KIB-SET-002': { order: 70, label: '初期設定の補足・ユーザー追加' },
+      'KPD-SET-001': { order: 100, label: '' }
+    };
 
     // データ取得
     async function fetchData() {
@@ -80,12 +131,14 @@
         const response = await fetch(API_URL);
         errorData = await response.json();
         
-        document.getElementById('statusBadge').className = "bg-emerald-900/60 border border-emerald-400/40 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-200 flex items-center gap-2";
-        document.getElementById('statusText').textContent = "接続完了";
+        document.getElementById('statusBadge').className = "bg-emerald-900/60 border border-emerald-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-emerald-100 flex items-center gap-2";
+        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-emerald-300";
+        document.getElementById('statusText').textContent = "最新データに接続中";
 
-        renderCards(errorData);
+        filterData();
       } catch (error) {
-        document.getElementById('statusBadge').className = "bg-rose-900/60 border border-rose-400/40 px-3 py-1.5 rounded-full text-xs font-medium text-rose-200 flex items-center gap-2";
+        document.getElementById('statusBadge').className = "bg-rose-900/60 border border-rose-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-rose-100 flex items-center gap-2";
+        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-rose-300";
         document.getElementById('statusText').textContent = "通信エラー";
         document.getElementById('cardList').innerHTML = `
           <div class="text-center py-12 bg-rose-50 rounded-2xl border border-rose-200 text-rose-700 p-6">
@@ -102,30 +155,21 @@
       const list = document.getElementById('cardList');
       const stats = document.getElementById('stats');
       list.innerHTML = '';
-      stats.innerHTML = `該当件数: <span class="font-bold text-teal-700 text-sm">${data.length}</span> 件`;
+      stats.innerHTML = `該当 <span class="text-teal-800 text-base font-extrabold">${data.length}</span> 件 <span class="font-normal text-slate-400">/ 全 ${errorData.length} 件</span>`;
 
       if (data.length === 0) {
         list.innerHTML = `
-          <div class="text-center py-12 bg-white rounded-2xl border border-slate-200 p-6">
-            <i class="fa-solid fa-file-circle-question text-3xl text-slate-300 mb-3"></i>
-            <p class="font-bold text-slate-600">該当するトラブル情報が見つかりませんでした</p>
-            <p class="text-xs text-slate-400 mt-1">別のキーワードでお試しください。</p>
+          <div class="text-center py-14 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+            <span class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><i class="fa-solid fa-magnifying-glass text-xl"></i></span>
+            <p class="font-bold text-slate-700">一致する情報が見つかりませんでした</p>
+            <p class="text-sm text-slate-500 mt-2">言葉を短くするか、別のキーワードをお試しください。</p>
           </div>
         `;
         return;
       }
 
-      data.forEach((rawItem, index) => {
-        const setupSteps = {
-          'KIB-SET-001': { order: 10, label: '初期設定 1/4' },
-          'KIB-SET-004': { order: 20, label: '初期設定 2/4' },
-          'KIB-SET-005': { order: 30, label: '初期設定 3/4' },
-          'KIB-SET-003': { order: 40, label: '初期設定 4/4・証明書' },
-          'KIB-SET-006': { order: 50, label: '初期設定 4/4・WEBサービス登録' },
-          'KIB-SET-007': { order: 60, label: '初期設定 4/4・端末連携' },
-          'KIB-SET-002': { order: 70, label: '初期設定の補足・ユーザー追加' },
-          'KPD-SET-001': { order: 100, label: '' }
-        }[rawItem.code || rawItem['code'] || ''];
+      data.forEach((rawItem) => {
+        const setupSteps = setupSequence[rawItem.code || rawItem['code'] || ''];
         const item = {
           code: rawItem["エラーコード"] || rawItem["code"] || "",
           title: rawItem["エラー内容"] || rawItem["title"] || "",
@@ -136,53 +180,53 @@
         };
 
         const card = document.createElement('div');
-        card.className = "bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 md:p-6 hover:shadow-md transition-shadow duration-200 relative overflow-hidden";
+        card.className = "bg-white rounded-3xl shadow-sm border border-slate-200/70 p-5 md:p-7 hover:shadow-lg hover:border-teal-200 transition-all duration-200 relative overflow-hidden";
 
         card.innerHTML = `
           <!-- タグ・エラーコード -->
           <div class="flex flex-wrap items-center gap-2 mb-3">
-            ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200/60"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
-            ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200/60"><i class="fa-solid fa-bug text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
-            ${setupSteps?.label ? `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">${escapeHtml(setupSteps.label)}</span>` : ''}
+            ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${item.category.includes('介護情報基盤') ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
+            ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-600"><i class="fa-solid fa-hashtag text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
+            ${setupSteps?.label ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">${escapeHtml(setupSteps.label)}</span>` : ''}
           </div>
 
           <!-- タイトル -->
-          <h2 class="text-base md:text-lg font-bold text-slate-800 mb-4 leading-snug">
+          <h2 class="text-lg md:text-xl font-bold text-slate-900 mb-4 leading-snug break-words">
             ${escapeHtml(item.title)}
           </h2>
 
           <!-- 主な原因 -->
           ${item.cause ? `
-            <div class="mb-3.5 bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+            <div class="mb-4 bg-slate-50 rounded-2xl p-4 border border-slate-100">
               <div class="text-xs font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
                 <i class="fa-solid fa-circle-info text-amber-500"></i> 主な原因
               </div>
-              <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${escapeHtml(item.cause)}</div>
+              <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">${escapeWithCircleBreaks(item.cause)}</div>
             </div>
           ` : ''}
 
           <!-- 対処方法 -->
           ${item.solution ? `
-            <div class="mb-3.5 bg-emerald-50/60 rounded-xl p-3.5 border border-emerald-100/80 relative group">
-              <div class="flex justify-between items-center mb-1.5">
-                <div class="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+            <div class="mb-4 bg-emerald-50/70 rounded-2xl p-4 md:p-5 border border-emerald-100 relative group">
+              <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                <div class="text-sm font-bold text-emerald-900 flex items-center gap-2">
                   <i class="fa-solid fa-circle-check text-emerald-600"></i> 対処方法・ご案内手順
                 </div>
-                <button onclick="copyToClipboard('${escapeJs(item.solution)}', this)" class="text-[11px] bg-white text-emerald-700 px-2 py-0.5 rounded border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1 shadow-sm">
-                  <i class="fa-regular fa-copy"></i> コピー
+                <button aria-label="手順をコピー" onclick="copyToClipboard('${escapeJs(item.solution)}', this)" class="text-xs bg-white text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2 shadow-sm">
+                  <i class="fa-regular fa-copy"></i> 手順をコピー
                 </button>
               </div>
-              <div class="text-xs md:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">${escapeHtml(item.solution)}</div>
+              <div class="text-sm md:text-base text-slate-800 leading-7 whitespace-pre-wrap break-words">${escapeHtml(item.solution)}</div>
             </div>
           ` : ''}
 
           <!-- 過去事例・メモ -->
           ${item.memo ? `
-            <div class="bg-amber-50/60 rounded-xl p-3.5 border border-amber-200/60">
+            <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/70">
               <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
                 <i class="fa-solid fa-lightbulb text-amber-600"></i> 社内ナレッジ・過去事例
               </div>
-              <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap">${escapeHtml(item.memo)}</div>
+              <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap break-words">${escapeWithCircleBreaks(item.memo)}</div>
             </div>
           ` : ''}
         `;
@@ -192,52 +236,56 @@
 
     // 検索フィルタ（コード・質問・原因・手順・分類・メモを横断）
     function filterData() {
-      const input = document.getElementById('searchInput');
-      const clearBtn = document.getElementById('clearBtn');
       const normalize = value => String(value ?? '').toLocaleLowerCase('ja').replace(/[\s　]+/g, '');
-      const query = normalize(input.value);
-
-      clearBtn.classList.toggle('hidden', !query);
-
-      if (!query) {
-        renderCards(errorData);
-        return;
-      }
+      const input = document.getElementById('searchInput');
+      const queryTerms = input.value.trim().split(/[\s　]+/).filter(Boolean).map(normalize);
+      const clearBtn = document.getElementById('clearBtn');
+      clearBtn.classList.toggle('hidden', queryTerms.length === 0);
+      clearBtn.classList.toggle('flex', queryTerms.length > 0);
 
       const filtered = errorData.filter(rawItem => {
+        const code = rawItem.code || rawItem['エラーコード'] || '';
+        const category = rawItem.category || rawItem['分類'] || rawItem['カテゴリ'] || '';
+        const itemIsKiban = String(code).startsWith('KIB-') || String(category).includes('介護情報基盤');
+        if (currentSystem === 'kiban' && !itemIsKiban) return false;
+        if (currentSystem === 'plan' && itemIsKiban) return false;
         const searchable = [
-          rawItem["エラーコード"], rawItem.code,
-          rawItem["エラー内容"], rawItem.title,
-          rawItem["原因"], rawItem.cause,
-          rawItem["対処方法"], rawItem["対処方法・ご案内ステップ"], rawItem.solution,
-          rawItem["分類"], rawItem.category,
-          rawItem["社内ナレッジ"], rawItem.memo
+          rawItem['エラーコード'], rawItem.code,
+          rawItem['エラー内容'], rawItem.title,
+          rawItem['原因'], rawItem['主な原因'], rawItem.cause,
+          rawItem['対処方法'], rawItem['対処方法・ご案内ステップ'], rawItem.solution,
+          rawItem['分類'], rawItem['カテゴリ'], rawItem.category,
+          rawItem['社内ナレッジ'], rawItem['社内ナレッジ・過去事例'], rawItem.memo
         ].map(normalize).join(' ');
-        return searchable.includes(query);
+        return queryTerms.every(term => searchable.includes(term));
       });
 
-      const setupOrder = {
-        'KIB-SET-001': 10,
-        'KIB-SET-004': 20,
-        'KIB-SET-005': 30,
-        'KIB-SET-003': 40,
-        'KIB-SET-006': 50,
-        'KIB-SET-007': 60,
-        'KIB-SET-002': 70,
-        'KPD-SET-001': 100
-      };
       filtered.sort((a, b) =>
-        (setupOrder[a.code || a['code']] ?? Number.MAX_SAFE_INTEGER) -
-        (setupOrder[b.code || b['code']] ?? Number.MAX_SAFE_INTEGER)
+        (setupSequence[a.code || a['code']]?.order ?? Number.MAX_SAFE_INTEGER) -
+        (setupSequence[b.code || b['code']]?.order ?? Number.MAX_SAFE_INTEGER)
       );
-
       renderCards(filtered);
+    }
+
+    function setSystemFilter(system) {
+      currentSystem = system;
+      document.getElementById('systemAll').setAttribute('aria-pressed', String(system === 'all'));
+      document.getElementById('systemPlan').setAttribute('aria-pressed', String(system === 'plan'));
+      document.getElementById('systemKiban').setAttribute('aria-pressed', String(system === 'kiban'));
+      filterData();
+    }
+
+    function quickSearch(term) {
+      document.getElementById('searchInput').value = term;
+      filterData();
+      document.getElementById('searchInput').focus();
     }
     
 
     function clearSearch() {
       document.getElementById('searchInput').value = '';
       filterData();
+      document.getElementById('searchInput').focus();
     }
 
     // テキストコピー機能
@@ -261,6 +309,11 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
+    }
+
+    function escapeWithCircleBreaks(text) {
+      const formatted = String(text ?? '').replace(/。(?=.)/g, '。\n').replace(/([^\n])○/g, '$1\n○');
+      return escapeHtml(formatted);
     }
 
     function escapeJs(str) {
