@@ -44,7 +44,7 @@
         <input 
           type="text" 
           id="searchInput" 
-          placeholder="エラーコード、文章、単語（例: パスワード、証明書）で検索..." 
+          placeholder="キーワードで検索（例: 初回登録、証明書、マイナアプリ、ケアプラン）..."
           oninput="filterData()"
           class="w-full pl-11 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all duration-200 shadow-inner"
         >
@@ -116,6 +116,16 @@
       }
 
       data.forEach((rawItem, index) => {
+        const setupSteps = {
+          'KIB-SET-001': { order: 10, label: '初期設定 1/4' },
+          'KIB-SET-004': { order: 20, label: '初期設定 2/4' },
+          'KIB-SET-005': { order: 30, label: '初期設定 3/4' },
+          'KIB-SET-003': { order: 40, label: '初期設定 4/4・証明書' },
+          'KIB-SET-006': { order: 50, label: '初期設定 4/4・WEBサービス登録' },
+          'KIB-SET-007': { order: 60, label: '初期設定 4/4・端末連携' },
+          'KIB-SET-002': { order: 70, label: '初期設定の補足・ユーザー追加' },
+          'KPD-SET-001': { order: 100, label: '' }
+        }[rawItem.code || rawItem['code'] || ''];
         const item = {
           code: rawItem["エラーコード"] || rawItem["code"] || "",
           title: rawItem["エラー内容"] || rawItem["title"] || "",
@@ -133,6 +143,7 @@
           <div class="flex flex-wrap items-center gap-2 mb-3">
             ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200/60"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
             ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200/60"><i class="fa-solid fa-bug text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
+            ${setupSteps?.label ? `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">${escapeHtml(setupSteps.label)}</span>` : ''}
           </div>
 
           <!-- タイトル -->
@@ -179,12 +190,12 @@
       });
     }
 
-    // 検索フィルタ
-// 検索フィルタ（エラーコード・タイトル・拡張子等で検索）
+    // 検索フィルタ（コード・質問・原因・手順・分類・メモを横断）
     function filterData() {
       const input = document.getElementById('searchInput');
       const clearBtn = document.getElementById('clearBtn');
-      const query = input.value.toLowerCase().trim();
+      const normalize = value => String(value ?? '').toLocaleLowerCase('ja').replace(/[\s　]+/g, '');
+      const query = normalize(input.value);
 
       clearBtn.classList.toggle('hidden', !query);
 
@@ -194,19 +205,31 @@
       }
 
       const filtered = errorData.filter(rawItem => {
-        const code = (rawItem["エラーコード"] || rawItem["code"] || "").toLowerCase();
-        const title = (rawItem["エラー内容"] || rawItem["title"] || "").toLowerCase();
-        const solution = (rawItem["対処方法"] || rawItem["solution"] || "").toLowerCase();
-        const memo = (rawItem["社内ナレッジ"] || rawItem["memo"] || "").toLowerCase();
-
-        // 1. コードまたはタイトルにマッチするかチェック
-        const matchTitleOrCode = code.includes(query) || title.includes(query);
-
-        // 2. 対処方法やメモに含まれる拡張子・キーワード（csv, pdf, png, txt等）にマッチするかチェック
-        const matchExtension = solution.includes(query) || memo.includes(query);
-
-        return matchTitleOrCode || matchExtension;
+        const searchable = [
+          rawItem["エラーコード"], rawItem.code,
+          rawItem["エラー内容"], rawItem.title,
+          rawItem["原因"], rawItem.cause,
+          rawItem["対処方法"], rawItem["対処方法・ご案内ステップ"], rawItem.solution,
+          rawItem["分類"], rawItem.category,
+          rawItem["社内ナレッジ"], rawItem.memo
+        ].map(normalize).join(' ');
+        return searchable.includes(query);
       });
+
+      const setupOrder = {
+        'KIB-SET-001': 10,
+        'KIB-SET-004': 20,
+        'KIB-SET-005': 30,
+        'KIB-SET-003': 40,
+        'KIB-SET-006': 50,
+        'KIB-SET-007': 60,
+        'KIB-SET-002': 70,
+        'KPD-SET-001': 100
+      };
+      filtered.sort((a, b) =>
+        (setupOrder[a.code || a['code']] ?? Number.MAX_SAFE_INTEGER) -
+        (setupOrder[b.code || b['code']] ?? Number.MAX_SAFE_INTEGER)
+      );
 
       renderCards(filtered);
     }
