@@ -1,99 +1,198 @@
-// メモ用GASのウェブアプリURL（ここにあなたのURLをペースト）
-const MEMO_GAS_URL = "https://script.google.com/macros/s/YOUR_MEMO_GAS_URL_HERE/exec";
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>介護の手続き・トラブル検索</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f9f9f9; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { font-size: 20px; border-bottom: 2px solid #007bff; padding-bottom: 8px; }
+        .memo-section { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; }
+        textarea { width: 100%; height: 80px; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 8px; }
+        button:hover { background: #0056b3; }
+        .memo-item { background: #f1f3f5; padding: 10px 15px; border-radius: 4px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .memo-text { white-space: pre-wrap; word-break: break-all; flex-grow: 1; margin-right: 10px; }
+        .delete-btn { background: #dc3545; padding: 4px 8px; font-size: 12px; }
+        .delete-btn:hover { background: #a71d2a; }
+        #toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 10px 20px; border-radius: 4px; display: none; z-index: 1000; }
+    </style>
+</head>
+<body>
 
-// 1. 【取得】メモを読み込んで画面に表示する関数
-async function loadMemos() {
-  try {
-    const response = await fetch(MEMO_GAS_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+<div class="container">
+    <h1>介護の手続き・トラブル検索</h1>
+    <p>キーワードやエラーコードで検索できます。（検索・カードUI等の既存機能）</p>
+
+    <!-- メモ機能セクション -->
+    <div class="memo-section">
+        <h3>担当者メモ</h3>
+        <textarea id="memo-input" placeholder="メモを入力してください..."></textarea>
+        <button onclick="handleSaveMemo()">メモを保存</button>
+
+        <div id="memo-list" style="margin-top: 20px;">
+            <p style="color: #666;">メモを読み込み中...</p>
+        </div>
+    </div>
+</div>
+
+<!-- 通知用トースト -->
+<div id="toast"></div>
+
+<!-- 非表示iframe（POST時のCORS回避用） -->
+<iframe id="hidden-iframe" name="hidden-iframe" style="display:none;"></iframe>
+
+<script>
+    // ▼ここにあなたのメモ用GASのウェブアプリURLを貼り付けてください
+    const MEMO_GAS_URL = "https://script.google.com/macros/s/YOUR_MEMO_GAS_URL_HERE/exec";
+
+    // ページ読み込み時にメモを取得
+    window.addEventListener('DOMContentLoaded', () => {
+        loadMemos();
+    });
+
+    // 通知トーストを表示する関数
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
     }
-    const memos = await response.json();
-    
-    // 画面のメモ表示エリアを更新する関数（ご自身の描画処理関数名に合わせてください）
-    renderMemosUI(memos);
-    
-  } catch (error) {
-    console.error("メモ取得エラー:", error);
-    // 「メモの取得に失敗しました」と出る原因はここです
-    showToast("メモの取得に失敗しました"); 
-  }
-}
 
-// 2. 【保存】iframe＋非表示フォームを使った書き込み処理（CORS回避）
-function saveMemo(textValue) {
-  if (!textValue) return;
+    // 1. 【取得】メモを読み込んで画面に表示する関数
+    async function loadMemos() {
+        const memoListEl = document.getElementById('memo-list');
+        try {
+            const response = await fetch(MEMO_GAS_URL);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const memos = await response.json();
+            renderMemosUI(memos);
+        } catch (error) {
+            console.error("メモ取得エラー:", error);
+            memoListEl.innerHTML = '<p style="color: red;">メモの取得に失敗しました</p>';
+            showToast("メモの取得に失敗しました"); 
+        }
+    }
 
-  let iframe = document.getElementById('hidden-iframe');
-  if (!iframe) {
-    iframe = document.createElement('iframe');
-    iframe.id = 'hidden-iframe';
-    iframe.name = 'hidden-iframe';
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-  }
+    // メモ一覧の描画処理
+    function renderMemosUI(memos) {
+        const memoListEl = document.getElementById('memo-list');
+        memoListEl.innerHTML = '';
 
-  const form = document.createElement('form');
-  form.action = MEMO_GAS_URL;
-  form.method = 'POST';
-  form.target = 'hidden-iframe';
+        if (!memos || memos.length === 0) {
+            memoListEl.innerHTML = '<p style="color: #666;">メモはまだありません。</p>';
+            return;
+        }
 
-  const actionInput = document.createElement('input');
-  actionInput.type = 'hidden';
-  actionInput.name = 'action';
-  actionInput.value = 'add';
-  form.appendChild(actionInput);
+        memos.forEach(memo => {
+            const div = document.createElement('div');
+            div.className = 'memo-item';
+            
+            div.innerHTML = `
+                <div class="memo-text">
+                    <small style="color: #888; display: block; margin-bottom: 4px;">${memo.timestamp || ''}</small>
+                    ${escapeHtml(memo.text)}
+                </div>
+                <button class="delete-btn" onclick="deleteMemo('${memo.id}')">削除</button>
+            `;
+            memoListEl.appendChild(div);
+        });
+    }
 
-  const textInput = document.createElement('input');
-  textInput.type = 'hidden';
-  textInput.name = 'text';
-  textInput.value = textValue;
-  form.appendChild(textInput);
+    // XSS対策のエスケープ関数
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&'`<>"]/g, function(match) {
+            return {
+                '&': '&amp;',
+                QUOTE: '&quot;',
+                "'": '&#x27;',
+                '`': '&#x60;',
+                '<': '&lt;',
+                '>': '&gt;'
+            }[match];
+        });
+    }
 
-  document.body.appendChild(form);
-  form.submit();
-  document.body.removeChild(form);
+    // 保存ボタンを押したときの処理
+    function handleSaveMemo() {
+        const inputEl = document.getElementById('memo-input');
+        const textValue = inputEl.value.trim();
+        if (!textValue) {
+            alert('メモの内容を入力してください。');
+            return;
+        }
+        saveMemo(textValue);
+        inputEl.value = '';
+    }
 
-  // 送信後、少し待ってからメモ一覧を再読み込み
-  setTimeout(() => {
-    loadMemos();
-  }, 1200);
-}
+    // 2. 【保存】iframe＋非表示フォームを使った書き込み処理（CORS回避）
+    function saveMemo(textValue) {
+        const form = document.createElement('form');
+        form.action = MEMO_GAS_URL;
+        form.method = 'POST';
+        form.target = 'hidden-iframe';
 
-// 3. 【削除】iframe＋非表示フォームを使った削除処理（CORS回避）
-function deleteMemo(memoId) {
-  let iframe = document.getElementById('hidden-iframe');
-  if (!iframe) {
-    iframe = document.createElement('iframe');
-    iframe.id = 'hidden-iframe';
-    iframe.name = 'hidden-iframe';
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-  }
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'add';
+        form.appendChild(actionInput);
 
-  const form = document.createElement('form');
-  form.action = MEMO_GAS_URL;
-  form.method = 'POST';
-  form.target = 'hidden-iframe';
+        const textInput = document.createElement('input');
+        textInput.type = 'hidden';
+        textInput.name = 'text';
+        textInput.value = textValue;
+        form.appendChild(textInput);
 
-  const actionInput = document.createElement('input');
-  actionInput.type = 'hidden';
-  actionInput.name = 'action';
-  actionInput.value = 'delete';
-  form.appendChild(actionInput);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
 
-  const idInput = document.createElement('input');
-  idInput.type = 'hidden';
-  idInput.name = 'id';
-  idInput.value = memoId;
-  form.appendChild(idInput);
+        showToast("メモを保存中...");
+        // 送信後、少し待ってからメモ一覧を再読み込み
+        setTimeout(() => {
+            loadMemos();
+        }, 1500);
+    }
 
-  document.body.appendChild(form);
-  form.submit();
-  document.body.removeChild(form);
+    // 3. 【削除】iframe＋非表示フォームを使った削除処理（CORS回避）
+    function deleteMemo(memoId) {
+        if (!confirm('このメモを削除してもよろしいですか？')) return;
 
-  // 削除後、少し待ってからメモ一覧を再読み込み
-  setTimeout(() => {
-    loadMemos();
-  }, 1200);
-}
+        const form = document.createElement('form');
+        form.action = MEMO_GAS_URL;
+        form.method = 'POST';
+        form.target = 'hidden-iframe';
+
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'delete';
+        form.appendChild(actionInput);
+
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'id';
+        idInput.value = memoId;
+        form.appendChild(idInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        showToast("メモを削除中...");
+        // 削除後、少し待ってからメモ一覧を再読み込み
+        setTimeout(() => {
+            loadMemos();
+        }, 1500);
+    }
+</script>
+
+</body>
+</html>
