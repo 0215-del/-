@@ -160,7 +160,7 @@
       }
     }
 
-    // カード描画
+    // カード描画（固定ID対応版）
     function renderCards(data) {
       const list = document.getElementById('cardList');
       const stats = document.getElementById('stats');
@@ -179,27 +179,28 @@
       }
 
       data.forEach((rawItem, idx) => {
-        const setupSteps = setupSequence[rawItem.code || rawItem['code'] || ''];
-        const rawCode = rawItem["エラーコード"] || rawItem["code"] || "";
-        const rawTitle = rawItem["エラー内容"] || rawItem["title"] || "";
-        const faqId = rawCode || `FAQ_${idx}_${rawTitle.substring(0, 10).replace(/\s+/g, '_')}`;
+        // 固定ID（id列：K001など）を優先利用。無い場合は行番号ベース
+        const faqId = rawItem.id || rawItem["id"] || `K${String(idx + 1).padStart(3, '0')}`;
+        const rawCode = rawItem.code || rawItem["エラーコード"] || "";
+        const rawTitle = rawItem.title || rawItem["見出し（タイトル）"] || rawItem["エラー内容"] || "";
 
         const item = {
           faqId: faqId,
           code: rawCode,
           title: rawTitle,
-          cause: rawItem["主な原因"] || rawItem["cause"] || "",
-          solution: rawItem["対処方法・ご案内ステップ"] || rawItem["solution"] || "",
-          category: rawItem["カテゴリ"] || rawItem["category"] || "",
-          memo: rawItem["社内ナレッジ・過去事例"] || rawItem["memo"] || ""
+          cause: rawItem.steps || rawItem["対処手順"] || rawItem["主な原因"] || "",
+          solution: rawItem.solution || rawItem["解決確認"] || "",
+          category: rawItem.category || rawItem["分類"] || "",
+          memo: rawItem.note || rawItem["担当者メモ"] || ""
         };
 
+        const setupSteps = setupSequence[item.code || ''];
         const card = document.createElement('div');
         card.className = "bg-white rounded-3xl shadow-sm border border-slate-200/70 p-5 md:p-7 hover:shadow-lg hover:border-teal-200 transition-all duration-200 relative overflow-hidden";
 
         card.innerHTML = `
           <div class="flex flex-wrap items-center gap-2 mb-3">
-            ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${item.category.includes('介護情報基盤') ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-teal-900 text-white">ID: ${escapeHtml(item.faqId)}</span>${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${item.category.includes('介護情報基盤') ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
             ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-600"><i class="fa-solid fa-hashtag text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
             ${setupSteps?.label ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">${escapeHtml(setupSteps.label)}</span>` : ''}
           </div>
@@ -211,7 +212,7 @@
           ${item.cause ? `
             <div class="mb-4 bg-slate-50 rounded-2xl p-4 border border-slate-100">
               <div class="text-xs font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
-                <i class="fa-solid fa-circle-info text-amber-500"></i> 主な原因
+                <i class="fa-solid fa-circle-info text-amber-500"></i> 対処手順・詳細
               </div>
               <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">${escapeWithPeriodBreaks(item.cause)}</div>
             </div>
@@ -221,10 +222,10 @@
             <div class="mb-4 bg-emerald-50/70 rounded-2xl p-4 md:p-5 border border-emerald-100 relative group">
               <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
                 <div class="text-sm font-bold text-emerald-900 flex items-center gap-2">
-                  <i class="fa-solid fa-circle-check text-emerald-600"></i> 対処方法・ご案内手順
+                  <i class="fa-solid fa-circle-check text-emerald-600"></i> 解決確認
                 </div>
                 <button aria-label="手順をコピー" onclick="copyToClipboard('${escapeJs(item.solution)}', this)" class="text-xs bg-white text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2 shadow-sm">
-                  <i class="fa-regular fa-copy"></i> 手順をコピー
+                  <i class="fa-regular fa-copy"></i> 解決確認をコピー
                 </button>
               </div>
               <div class="text-sm md:text-base text-slate-800 leading-7 whitespace-pre-wrap break-words">${escapeHtml(item.solution)}</div>
@@ -243,7 +244,7 @@
           <div class="mt-5 pt-4 border-t border-slate-100 bg-slate-50/50 -mx-5 -mb-5 p-5 md:-mx-7 md:-mb-7 md:p-7 rounded-b-3xl">
             <div class="flex items-center justify-between mb-3">
               <div class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                <i class="fa-solid fa-comments text-teal-600"></i> 閲覧者メモ・補足事項
+                <i class="fa-solid fa-comments text-teal-600"></i> 閲覧者メモ・補足事項 (ID: ${escapeHtml(item.faqId)})
               </div>
               <button onclick="toggleMemoList('${escapeJs(item.faqId)}')" class="text-xs text-teal-700 hover:text-teal-900 font-semibold flex items-center gap-1">
                 <span>メモを表示・追記</span>
@@ -260,237 +261,3 @@
                 <div class="flex items-center gap-2">
                   <input type="text" id="memo-user-${escapeHtml(item.faqId)}" placeholder="お名前・担当者名（任意）" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600">
                 </div>
-                <textarea id="memo-text-${escapeHtml(item.faqId)}" rows="2" placeholder="補足情報や過去の対応メモを入力..." class="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600 resize-y"></textarea>
-                <div class="flex justify-end">
-                  <button onclick="submitMemo('${escapeJs(item.faqId)}', this)" class="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-800 text-white rounded-xl text-xs font-bold hover:bg-teal-900 transition-colors shadow-sm">
-                    <i class="fa-solid fa-paper-plane"></i> メモを投稿
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        list.appendChild(card);
-      });
-    }
-
-    function toggleMemoList(faqId) {
-      const container = document.getElementById(`memo-container-${faqId}`);
-      const icon = document.getElementById(`memo-icon-${faqId}`);
-      const isHidden = container.classList.contains('hidden');
-
-      if (isHidden) {
-        container.classList.remove('hidden');
-        if (icon) icon.classList.add('rotate-180');
-        loadMemos(faqId);
-      } else {
-        container.classList.add('hidden');
-        if (icon) icon.classList.remove('rotate-180');
-      }
-    }
-
-    async function loadMemos(faqId) {
-      const listEl = document.getElementById(`memo-list-${faqId}`);
-
-      try {
-        const res = await fetch(`${MEMO_API_URL}?faq_id=${encodeURIComponent(faqId)}`);
-        const json = await res.json();
-
-        if (json.status === 'success') {
-          if (!json.data || json.data.length === 0) {
-            listEl.innerHTML = '<p class="text-slate-400 italic bg-slate-100/70 p-2.5 rounded-xl">まだメモはありません。</p>';
-            return;
-          }
-
-          listEl.innerHTML = json.data.map(m => `
-            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1 relative group">
-              <div class="flex items-center justify-between text-[11px] text-slate-500 pr-12">
-                <span class="font-bold text-slate-700 flex items-center gap-1"><i class="fa-regular fa-user text-teal-600"></i> ${escapeHtml(m.user_name || '匿名')}</span>
-                <span class="text-slate-400">${escapeHtml(m.created_at || '')}</span>
-              </div>
-              <p class="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(m.memo_text || '')}</p>
-              
-              <!-- 削除ボタン -->
-              <button onclick="deleteMemo('${escapeJs(m.id)}', '${escapeJs(faqId)}', this)" class="absolute top-2.5 right-2.5 px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1">
-                <i class="fa-solid fa-trash-can"></i> 削除
-              </button>
-            </div>
-          `).join('');
-        } else {
-          listEl.innerHTML = '<p class="text-rose-500">メモの取得に失敗しました。</p>';
-        }
-      } catch (err) {
-        listEl.innerHTML = '<p class="text-rose-500">通信エラーが発生しました。</p>';
-      }
-    }
-
-    async function submitMemo(faqId, btnEl) {
-      const userEl = document.getElementById(`memo-user-${faqId}`);
-      const textEl = document.getElementById(`memo-text-${faqId}`);
-      const userName = userEl.value.trim();
-      const memoText = textEl.value.trim();
-
-      if (!memoText) {
-        alert('メモの内容を入力してください。');
-        return;
-      }
-
-      const originalText = btnEl.innerHTML;
-      btnEl.disabled = true;
-      btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 送信中...`;
-
-      try {
-        await fetch(MEMO_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            faq_id: faqId,
-            user_name: userName,
-            memo_text: memoText
-          })
-        });
-
-        textEl.value = '';
-        await loadMemos(faqId);
-      } catch (err) {
-        alert('メモの投稿に失敗しました。');
-      } finally {
-        btnEl.disabled = false;
-        btnEl.innerHTML = originalText;
-      }
-    }
-
-    // メモ削除機能
-    async function deleteMemo(memoId, faqId, btnEl) {
-      if (!confirm('このメモを削除してもよろしいですか？')) {
-        return;
-      }
-
-      btnEl.disabled = true;
-      btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
-
-      try {
-        await fetch(MEMO_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            action: 'delete',
-            id: memoId
-          })
-        });
-
-        await loadMemos(faqId);
-      } catch (err) {
-        alert('メモの削除に失敗しました。');
-        btnEl.disabled = false;
-        btnEl.innerHTML = `<i class="fa-solid fa-trash-can"></i> 削除`;
-      }
-    }
-
-    function filterData() {
-      const normalize = value => String(value ?? '').toLocaleLowerCase('ja').replace(/[\s ]+/g, '');
-      const input = document.getElementById('searchInput');
-      const queryTerms = input.value.trim().split(/[\s ]+/).filter(Boolean).map(normalize);
-      const clearBtn = document.getElementById('clearBtn');
-      clearBtn.classList.toggle('hidden', queryTerms.length === 0);
-      clearBtn.classList.toggle('flex', queryTerms.length > 0);
-
-      const filtered = errorData.filter(rawItem => {
-        const code = rawItem.code || rawItem['エラーコード'] || '';
-        const category = rawItem.category || rawItem['分類'] || rawItem['カテゴリ'] || '';
-        const itemIsKiban = String(code).startsWith('KIB-') || String(category).includes('介護情報基盤');
-        if (currentSystem === 'kiban' && !itemIsKiban) return false;
-        if (currentSystem === 'plan' && itemIsKiban) return false;
-        const searchable = [
-          rawItem['エラーコード'], rawItem.code,
-          rawItem['エラー内容'], rawItem.title,
-          rawItem['原因'], rawItem['主な原因'], rawItem.cause,
-          rawItem['対処方法'], rawItem['対処方法・ご案内ステップ'], rawItem.solution,
-          rawItem['分類'], rawItem['カテゴリ'], rawItem.category,
-          rawItem['社内ナレッジ'], rawItem['社内ナレッジ・過去事例'], rawItem.memo
-        ].map(normalize).join(' ');
-        return queryTerms.every(term => searchable.includes(term));
-      });
-
-      filtered.sort((a, b) =>
-        (setupSequence[a.code || a['code']]?.order ?? Number.MAX_SAFE_INTEGER) -
-        (setupSequence[b.code || b['code']]?.order ?? Number.MAX_SAFE_INTEGER)
-      );
-      renderCards(filtered);
-    }
-
-    function setSystemFilter(system) {
-      currentSystem = system;
-      document.getElementById('systemAll').setAttribute('aria-pressed', String(system === 'all'));
-      document.getElementById('systemPlan').setAttribute('aria-pressed', String(system === 'plan'));
-      document.getElementById('systemKiban').setAttribute('aria-pressed', String(system === 'kiban'));
-      filterData();
-    }
-
-    function quickSearch(term) {
-      document.getElementById('searchInput').value = term;
-      filterData();
-      document.getElementById('searchInput').focus();
-    }
-
-    function clearSearch() {
-      document.getElementById('searchInput').value = '';
-      filterData();
-      document.getElementById('searchInput').focus();
-    }
-
-    function copyToClipboard(text, btn) {
-      navigator.clipboard.writeText(text).then(() => {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> 完了!`;
-        btn.classList.add('bg-emerald-100');
-        setTimeout(() => {
-          btn.innerHTML = originalText;
-          btn.classList.remove('bg-emerald-100');
-        }, 1500);
-      });
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-    }
-
-    function escapeWithPeriodBreaks(text) {
-      return escapeHtml(String(text ?? '').replace(/。(?=.)/g, '。\n'));
-    }
-
-    function linkifyUrlsWithPeriodBreaks(text) {
-      return String(text ?? '').split(/(https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+)/g).map((part, index) => {
-        if (index % 2 === 1) return linkifyUrls(part);
-        return escapeWithPeriodBreaks(part);
-      }).join('');
-    }
-
-    function linkifyUrls(str) {
-      const safeText = escapeHtml(String(str ?? ''));
-      return safeText.replace(/https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+/g, url =>
-        '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="underline decoration-amber-700/50 underline-offset-2 break-all hover:text-amber-800">' + url + '</a>'
-      );
-    }
-
-    function escapeJs(str) {
-      if (!str) return '';
-      return str.replace(/\\/g, '\\\\')
-                .replace(/'/g, "\\'")
-                .replace(/\n/g, '\\n');
-    }
-
-    window.addEventListener('scroll', () => {
-      document.getElementById('backToTop').classList.toggle('hidden', window.scrollY < 400);
-    }, { passive: true });
-
-    fetchData();
-  </script>
-
-</body>
-</html>
