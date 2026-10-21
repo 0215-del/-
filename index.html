@@ -160,7 +160,7 @@
       }
     }
 
-    // カード描画（固定ID対応版）
+    // カード描画（固定ID・出典URL対応版）
     function renderCards(data) {
       const list = document.getElementById('cardList');
       const stats = document.getElementById('stats');
@@ -188,10 +188,10 @@
           faqId: faqId,
           code: rawCode,
           title: rawTitle,
-          cause: rawItem.steps || rawItem["対処手順"] || rawItem["主な原因"] || "",
-          solution: rawItem.solution || rawItem["解決確認"] || "",
-          category: rawItem.category || rawItem["分類"] || "",
-          memo: rawItem.note || rawItem["担当者メモ"] || ""
+          cause: rawItem.cause || rawItem["cause"] || rawItem["主な原因"] || "",
+          solution: rawItem.solution || rawItem["solution"] || rawItem["解決確認"] || "",
+          category: rawItem.category || rawItem["category"] || rawItem["分類"] || "",
+          memo: rawItem.memo || rawItem["memo"] || rawItem["担当者メモ"] || ""
         };
 
         const setupSteps = setupSequence[item.code || ''];
@@ -236,7 +236,7 @@
           ${item.memo ? `
             <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/70 mb-4">
               <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
-                <i class="fa-solid fa-lightbulb text-amber-600"></i> 社内ナレッジ・過去事例
+                <i class="fa-solid fa-link text-amber-600"></i> 公式出典・確認先リンク
               </div>
               <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap break-words">${linkifyUrlsWithPeriodBreaks(item.memo)}</div>
             </div>
@@ -409,7 +409,7 @@
           rawItem['主な原因'], rawItem['対処手順'], rawItem.cause,
           rawItem['解決確認'], rawItem.solution,
           rawItem['分類'], rawItem['カテゴリ'], rawItem.category,
-          rawItem['担当者メモ'], rawItem.note
+          rawItem['担当者メモ'], rawItem.memo
         ].map(normalize).join(' ');
         return queryTerms.every(term => searchable.includes(term));
       });
