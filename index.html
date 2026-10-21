@@ -208,7 +208,7 @@
               <div class="text-xs font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
                 <i class="fa-solid fa-circle-info text-amber-500"></i> 主な原因
               </div>
-              <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">${escapeWithCircleBreaks(item.cause)}</div>
+              <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">${escapeWithPeriodBreaks(item.cause)}</div>
             </div>
           ` : ''}
 
@@ -233,7 +233,7 @@
               <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
                 <i class="fa-solid fa-lightbulb text-amber-600"></i> 社内ナレッジ・過去事例
               </div>
-              <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap break-words">${escapeWithCircleBreaks(item.memo)}</div>
+              <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap break-words">${linkifyUrlsWithPeriodBreaks(item.memo)}</div>
             </div>
           ` : ''}
         `;
@@ -318,9 +318,22 @@
                 .replace(/'/g, '&#039;');
     }
 
-    function escapeWithCircleBreaks(text) {
-      const formatted = String(text ?? '').replace(/。(?=.)/g, '。\n').replace(/([^\n])○/g, '$1\n○');
-      return escapeHtml(formatted);
+    function escapeWithPeriodBreaks(text) {
+      return escapeHtml(String(text ?? '').replace(/。(?=.)/g, '。\n'));
+    }
+
+    function linkifyUrlsWithPeriodBreaks(text) {
+      return String(text ?? '').split(/(https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+)/g).map((part, index) => {
+        if (index % 2 === 1) return linkifyUrls(part);
+        return escapeWithPeriodBreaks(part);
+      }).join('');
+    }
+
+    function linkifyUrls(str) {
+      const safeText = escapeHtml(String(str ?? ''));
+      return safeText.replace(/https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+/g, url =>
+        '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="underline decoration-amber-700/50 underline-offset-2 break-all hover:text-amber-800">' + url + '</a>'
+      );
     }
 
     function escapeJs(str) {
