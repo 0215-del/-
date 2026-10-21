@@ -314,7 +314,6 @@
       btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 送信中...`;
 
       try {
-        // 非表示のiframeとフォームを使って送信（CORSエラーを完全に回避）
         const iframeName = 'hidden_iframe_' + Date.now();
         let iframe = document.getElementById(iframeName);
         if (!iframe) {
@@ -329,7 +328,6 @@
         form.action = MEMO_API_URL;
         form.target = iframeName;
 
-        // 送信するデータをフォームのinputとしてセット
         const payloadInput = document.createElement('input');
         payloadInput.type = 'hidden';
         payloadInput.name = 'payload';
@@ -344,7 +342,6 @@
         form.submit();
         document.body.removeChild(form);
 
-        // 入力をクリアして少し待ってからメモ一覧を再読み込み
         textEl.value = '';
         setTimeout(() => {
           loadMemos(faqId);
@@ -359,41 +356,41 @@
       }
     }
 
-      const originalText = btnEl.innerHTML;
-      btnEl.disabled = true;
-      btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 送信中...`;
-
-      try {
-        await fetch(MEMO_API_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ faq_id: faqId, user_name: userName, memo_text: memoText })
-        });
-
-        textEl.value = '';
-        setTimeout(() => loadMemos(faqId), 1000);
-      } catch (err) {
-        alert('メモの投稿に失敗しました。');
-      } finally {
-        btnEl.disabled = false;
-        btnEl.innerHTML = originalText;
-      }
-    }
-
     async function deleteMemo(memoId, faqId, btnEl) {
       if (!confirm('このメモを削除してもよろしいですか？')) return;
 
       btnEl.disabled = true;
       try {
-        await fetch(MEMO_API_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ action: 'delete', id: memoId })
-        });
+        const iframeName = 'hidden_iframe_del_' + Date.now();
+        let iframe = document.getElementById(iframeName);
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.name = iframeName;
+          iframe.style.display = 'none';
+          document.body.appendChild(iframe);
+        }
 
-        setTimeout(() => loadMemos(faqId), 1000);
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = MEMO_API_URL;
+        form.target = iframeName;
+
+        const payloadInput = document.createElement('input');
+        payloadInput.type = 'hidden';
+        payloadInput.name = 'payload';
+        payloadInput.value = JSON.stringify({
+          action: 'delete',
+          id: memoId
+        });
+        form.appendChild(payloadInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        setTimeout(() => {
+          loadMemos(faqId);
+        }, 1200);
       } catch (err) {
         alert('メモの削除に失敗しました。');
         btnEl.disabled = false;
