@@ -1,501 +1,99 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ケアプラン連携システム トラブルナレッジ検索</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    :root { color-scheme: light; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background:
-        radial-gradient(ellipse at top left, rgba(204, 251, 241, .45), transparent 38rem),
-        #f4f7f8;
+// メモ用GASのウェブアプリURL（ここにあなたのURLをペースト）
+const MEMO_GAS_URL = "https://script.google.com/macros/s/YOUR_MEMO_GAS_URL_HERE/exec";
+
+// 1. 【取得】メモを読み込んで画面に表示する関数
+async function loadMemos() {
+  try {
+    const response = await fetch(MEMO_GAS_URL);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    button, input, textarea { font: inherit; }
-    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(13, 148, 136, .35); outline-offset: 2px; }
-    .system-tab[aria-pressed="true"] { background:#0f766e; color:#fff; border-color:#0f766e; box-shadow:0 4px 12px rgba(15,118,110,.18); }
-    .system-tab[aria-pressed="false"] { background:#fff; color:#475569; border-color:#e2e8f0; }
-    .quick-search { transition: background-color .15s ease, transform .15s ease; }
-    .quick-search:hover { transform: translateY(-1px); }
-  </style>
-</head>
-<body class="text-slate-800 min-h-screen pb-12">
-
-  <!-- ヘッダー -->
-  <header class="bg-gradient-to-r from-teal-950 via-teal-800 to-emerald-800 text-white shadow-lg">
-    <div class="max-w-6xl mx-auto px-4 py-7 md:py-9 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-      <div class="flex items-center gap-4">
-        <span class="h-12 w-12 shrink-0 rounded-2xl bg-white/10 ring-1 ring-white/20 flex items-center justify-center">
-          <i class="fa-solid fa-book-medical text-2xl text-teal-100"></i>
-        </span>
-        <div>
-          <h1 class="text-xl md:text-3xl font-extrabold tracking-tight">介護の手続き・トラブル検索</h1>
-          <p class="text-teal-100 text-sm mt-1">ケアプランデータ連携システム と 介護情報基盤</p>
-        </div>
-      </div>
-      <div id="statusBadge" class="bg-white/10 border border-white/20 px-3.5 py-2 rounded-full text-xs font-medium text-teal-50 flex items-center gap-2">
-        <span id="statusDot" class="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></span>
-        <span id="statusText">データを確認中</span>
-      </div>
-    </div>
-  </header>
-
-  <main class="max-w-6xl mx-auto px-4 -mt-5 md:-mt-6">
+    const memos = await response.json();
     
-    <!-- 検索ボックス -->
-    <section class="bg-white rounded-3xl shadow-xl shadow-slate-900/5 p-5 md:p-7 mb-6 border border-white">
-      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
-        <div>
-          <p class="text-[11px] font-bold tracking-[.16em] text-teal-700 uppercase">Knowledge search</p>
-          <h2 class="text-lg md:text-xl font-bold text-slate-900 mt-1">知りたいことを検索</h2>
-          <p class="text-sm text-slate-500 mt-1">質問・原因・手順・分類から探せます。</p>
-        </div>
-        <button id="refreshBtn" onclick="fetchData()" class="self-start sm:self-auto inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-teal-800 transition-colors">
-          <i class="fa-solid fa-rotate-right"></i> 最新データを読み込む
-        </button>
-      </div>
-      <div class="relative">
-        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-700">
-          <i class="fa-solid fa-magnifying-glass text-lg"></i>
-        </div>
-        <input 
-          type="text" 
-          id="searchInput" 
-          aria-label="検索キーワード"
-          placeholder="例：初回登録、電子証明書、CSV送信、エラーコード"
-          oninput="filterData()"
-          class="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base md:text-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all duration-200"
-        >
-        <button id="clearBtn" aria-label="検索語を消去" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 px-4 items-center text-slate-400 hover:text-slate-700">
-          <i class="fa-solid fa-circle-xmark text-lg"></i>
-        </button>
-      </div>
+    // 画面のメモ表示エリアを更新する関数（ご自身の描画処理関数名に合わせてください）
+    renderMemosUI(memos);
+    
+  } catch (error) {
+    console.error("メモ取得エラー:", error);
+    // 「メモの取得に失敗しました」と出る原因はここです
+    showToast("メモの取得に失敗しました"); 
+  }
+}
 
-      <div class="mt-4 flex flex-wrap items-center gap-2">
-        <span class="text-xs font-semibold text-slate-500 mr-1">よく使う検索</span>
-        <button class="quick-search rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100" onclick="quickSearch('初期設定')">初期設定</button>
-        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('電子証明書')">電子証明書</button>
-        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('CSV')">CSV</button>
-        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('ログイン')">ログイン</button>
-      </div>
+// 2. 【保存】iframe＋非表示フォームを使った書き込み処理（CORS回避）
+function saveMemo(textValue) {
+  if (!textValue) return;
 
-      <div class="mt-6 pt-5 border-t border-slate-100">
-        <div class="text-xs font-semibold text-slate-500 mb-2.5">検索する情報</div>
-        <div class="flex flex-wrap gap-2" role="group" aria-label="検索対象システム">
-          <button id="systemAll" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="true" onclick="setSystemFilter('all')">すべて</button>
-          <button id="systemPlan" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('plan')">ケアプランデータ連携</button>
-          <button id="systemKiban" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('kiban')">介護情報基盤</button>
-        </div>
-      </div>
-      <div class="mt-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm">
-        <div id="stats" class="font-semibold text-slate-700">検索準備中...</div>
-        <div class="text-xs text-slate-400">スプレッドシートの更新内容は読み込み直すと反映されます</div>
-      </div>
-    </section>
+  let iframe = document.getElementById('hidden-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'hidden-iframe';
+    iframe.name = 'hidden-iframe';
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+  }
 
-    <!-- 結果カードリスト -->
-    <div id="cardList" class="space-y-4 pb-8">
-      <div class="text-center py-16 bg-white rounded-3xl shadow-sm border border-slate-200/70">
-        <i class="fa-solid fa-spinner fa-spin text-3xl text-teal-700 mb-3"></i>
-        <p class="text-slate-600 text-sm font-semibold">データを読み込み中...</p>
-      </div>
-    </div>
+  const form = document.createElement('form');
+  form.action = MEMO_GAS_URL;
+  form.method = 'POST';
+  form.target = 'hidden-iframe';
 
-  </main>
+  const actionInput = document.createElement('input');
+  actionInput.type = 'hidden';
+  actionInput.name = 'action';
+  actionInput.value = 'add';
+  form.appendChild(actionInput);
 
-  <button id="backToTop" type="button" aria-label="ページの先頭へ戻る" title="上に戻る"
-    class="hidden fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-teal-800 text-white shadow-lg ring-1 ring-white/70 transition hover:-translate-y-1 hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-300 md:bottom-6 md:right-6"
-    onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
-    <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
-    <span class="sr-only">上に戻る</span>
-  </button>
+  const textInput = document.createElement('input');
+  textInput.type = 'hidden';
+  textInput.name = 'text';
+  textInput.value = textValue;
+  form.appendChild(textInput);
 
-  <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbw4CR4Yh79rbVznHUClo5u89_0Ub28A55E_dI3w7vlxKmgjUf0IbfwZBpBppvm7G2M0BQ/exec";
-    const MEMO_API_URL = "https://script.google.com/macros/s/AKfycbzYdPOFD1A3F8ET91FuJ0sWXfxfOZWdoaAR6l67VUMM9451qfcQ_Vp8HDHCgxSFu0Equg/exec";
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
 
-    let errorData = [];
-    let currentSystem = 'all';
+  // 送信後、少し待ってからメモ一覧を再読み込み
+  setTimeout(() => {
+    loadMemos();
+  }, 1200);
+}
 
-    const setupSequence = {
-      'KIB-SET-001': { order: 10, label: '初期設定 1/4' },
-      'KIB-SET-004': { order: 20, label: '初期設定 2/4' },
-      'KIB-SET-005': { order: 30, label: '初期設定 3/4' },
-      'KIB-SET-003': { order: 40, label: '初期設定 4/4・証明書' },
-      'KIB-SET-006': { order: 50, label: '初期設定 4/4・WEBサービス登録' },
-      'KIB-SET-007': { order: 60, label: '初期設定 4/4・端末連携' },
-      'KIB-SET-002': { order: 70, label: '初期設定の補足・ユーザー追加' },
-      'KPD-SET-001': { order: 100, label: '' }
-    };
+// 3. 【削除】iframe＋非表示フォームを使った削除処理（CORS回避）
+function deleteMemo(memoId) {
+  let iframe = document.getElementById('hidden-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'hidden-iframe';
+    iframe.name = 'hidden-iframe';
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+  }
 
-    async function fetchData() {
-      try {
-        const response = await fetch(API_URL);
-        errorData = await response.json();
-        
-        document.getElementById('statusBadge').className = "bg-emerald-900/60 border border-emerald-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-emerald-100 flex items-center gap-2";
-        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-emerald-300";
-        document.getElementById('statusText').textContent = "最新データに接続中";
+  const form = document.createElement('form');
+  form.action = MEMO_GAS_URL;
+  form.method = 'POST';
+  form.target = 'hidden-iframe';
 
-        filterData();
-      } catch (error) {
-        document.getElementById('statusBadge').className = "bg-rose-900/60 border border-rose-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-rose-100 flex items-center gap-2";
-        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-rose-300";
-        document.getElementById('statusText').textContent = "通信エラー";
-      }
-    }
+  const actionInput = document.createElement('input');
+  actionInput.type = 'hidden';
+  actionInput.name = 'action';
+  actionInput.value = 'delete';
+  form.appendChild(actionInput);
 
-    function renderCards(data) {
-      const list = document.getElementById('cardList');
-      const stats = document.getElementById('stats');
-      list.innerHTML = '';
-      stats.innerHTML = `該当 <span class="text-teal-800 text-base font-extrabold">${data.length}</span> 件 <span class="font-normal text-slate-400">/ 全 ${errorData.length} 件</span>`;
+  const idInput = document.createElement('input');
+  idInput.type = 'hidden';
+  idInput.name = 'id';
+  idInput.value = memoId;
+  form.appendChild(idInput);
 
-      if (data.length === 0) {
-        list.innerHTML = `
-          <div class="text-center py-14 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-            <span class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><i class="fa-solid fa-magnifying-glass text-xl"></i></span>
-            <p class="font-bold text-slate-700">一致する情報が見つかりませんでした</p>
-          </div>
-        `;
-        return;
-      }
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
 
-      data.forEach((rawItem, idx) => {
-        const faqId = rawItem.id || rawItem["ID"] || `K${String(idx + 1).padStart(3, '0')}`;
-        const rawCode = rawItem.code || rawItem["エラーコード"] || "";
-        const rawTitle = rawItem.title || rawItem["見出し（タイトル）"] || "";
-
-        const item = {
-          faqId: faqId,
-          code: rawCode,
-          title: rawTitle,
-          cause: rawItem.cause || rawItem["対処手順"] || "",
-          category: rawItem.category || rawItem["分類"] || "",
-          memo: rawItem.memo || rawItem["担当者メモ"] || ""
-        };
-
-        const setupSteps = setupSequence[item.code || ''];
-        const card = document.createElement('div');
-        card.className = "bg-white rounded-3xl shadow-sm border border-slate-200/70 p-5 md:p-7 hover:shadow-lg hover:border-teal-200 transition-all duration-200 relative overflow-hidden";
-
-        card.innerHTML = `
-          <div class="flex flex-wrap items-center gap-2 mb-3">
-            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-teal-900 text-white">ID: ${escapeHtml(item.faqId)}</span>
-            ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${item.category.includes('介護情報基盤') ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
-            ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-600"><i class="fa-solid fa-hashtag text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
-            ${setupSteps?.label ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">${escapeHtml(setupSteps.label)}</span>` : ''}
-          </div>
-
-          <h2 class="text-lg md:text-xl font-bold text-slate-900 mb-4 leading-snug break-words">
-            ${escapeHtml(item.title)}
-          </h2>
-
-          ${item.cause ? `
-            <div class="mb-4 bg-slate-50 rounded-2xl p-4 border border-slate-100 relative group">
-              <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
-                <div class="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  <i class="fa-solid fa-circle-check text-emerald-600"></i> 対処の手順・ご案内
-                </div>
-                <button aria-label="手順をコピー" onclick="copyToClipboard('${escapeJs(item.cause)}', this)" class="text-xs bg-white text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2 shadow-sm">
-                  <i class="fa-regular fa-copy"></i> 手順をコピー
-                </button>
-              </div>
-              <div class="text-sm md:text-base text-slate-800 leading-7 whitespace-pre-wrap break-words">${escapeHtml(item.cause)}</div>
-            </div>
-          ` : ''}
-
-          ${item.memo ? `
-            <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/70 mb-4">
-              <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
-                <i class="fa-solid fa-link text-amber-600"></i> 公式出典・確認先リンク
-              </div>
-              <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap break-words">${linkifyUrlsWithPeriodBreaks(item.memo)}</div>
-            </div>
-          ` : ''}
-
-          <div class="mt-5 pt-4 border-t border-slate-100 bg-slate-50/50 -mx-5 -mb-5 p-5 md:-mx-7 md:-mb-7 md:p-7 rounded-b-3xl">
-            <div class="flex items-center justify-between mb-3">
-              <div class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                <i class="fa-solid fa-comments text-teal-600"></i> 閲覧者メモ・補足事項 (ID: ${escapeHtml(item.faqId)})
-              </div>
-              <button onclick="toggleMemoList('${escapeJs(item.faqId)}')" class="text-xs text-teal-700 hover:text-teal-900 font-semibold flex items-center gap-1">
-                <span>メモを表示・追記</span>
-                <i class="fa-solid fa-chevron-down transition-transform duration-200" id="memo-icon-${escapeHtml(item.faqId)}"></i>
-              </button>
-            </div>
-
-            <div id="memo-container-${escapeHtml(item.faqId)}" class="hidden mt-3 space-y-4">
-              <div id="memo-list-${escapeHtml(item.faqId)}" class="space-y-2 text-xs text-slate-600">
-                <p class="text-slate-400 italic"><i class="fa-solid fa-spinner fa-spin mr-1"></i> メモを読み込み中...</p>
-              </div>
-
-              <div class="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-2 shadow-sm">
-                <div class="flex items-center gap-2">
-                  <input type="text" id="memo-user-${escapeHtml(item.faqId)}" placeholder="お名前・担当者名（任意）" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600">
-                </div>
-                <textarea id="memo-text-${escapeHtml(item.faqId)}" rows="2" placeholder="補足情報や過去の対応メモを入力..." class="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600 resize-y"></textarea>
-                <div class="flex justify-end">
-                  <button onclick="submitMemo('${escapeJs(item.faqId)}', this)" class="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-800 text-white rounded-xl text-xs font-bold hover:bg-teal-900 transition-colors shadow-sm">
-                    <i class="fa-solid fa-paper-plane"></i> メモを投稿
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        list.appendChild(card);
-      });
-    }
-
-    function toggleMemoList(faqId) {
-      const container = document.getElementById(`memo-container-${faqId}`);
-      const icon = document.getElementById(`memo-icon-${faqId}`);
-      const isHidden = container.classList.contains('hidden');
-
-      if (isHidden) {
-        container.classList.remove('hidden');
-        if (icon) icon.classList.add('rotate-180');
-        loadMemos(faqId);
-      } else {
-        container.classList.add('hidden');
-        if (icon) icon.classList.remove('rotate-180');
-      }
-    }
-
-    async function loadMemos(faqId) {
-      const listEl = document.getElementById(`memo-list-${faqId}`);
-      try {
-        const res = await fetch(`${MEMO_API_URL}?faq_id=${encodeURIComponent(faqId)}`);
-        const json = await res.json();
-
-        if (json.status === 'success') {
-          if (!json.data || json.data.length === 0) {
-            listEl.innerHTML = '<p class="text-slate-400 italic bg-slate-100/70 p-2.5 rounded-xl">まだメモはありません。</p>';
-            return;
-          }
-
-          listEl.innerHTML = json.data.map(m => `
-            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1 relative group">
-              <div class="flex items-center justify-between text-[11px] text-slate-500 pr-12">
-                <span class="font-bold text-slate-700 flex items-center gap-1"><i class="fa-regular fa-user text-teal-600"></i> ${escapeHtml(m.user_name || '匿名')}</span>
-                <span class="text-slate-400">${escapeHtml(m.created_at || '')}</span>
-              </div>
-              <p class="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(m.memo_text || '')}</p>
-              <button onclick="deleteMemo('${escapeJs(m.id)}', '${escapeJs(faqId)}', this)" class="absolute top-2.5 right-2.5 px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1">
-                <i class="fa-solid fa-trash-can"></i> 削除
-              </button>
-            </div>
-          `).join('');
-        }
-      } catch (err) {
-        listEl.innerHTML = '<p class="text-rose-500">メモの取得に失敗しました。</p>';
-      }
-    }
-
-    async function submitMemo(faqId, btnEl) {
-      const userEl = document.getElementById(`memo-user-${faqId}`);
-      const textEl = document.getElementById(`memo-text-${faqId}`);
-      const userName = userEl.value.trim();
-      const memoText = textEl.value.trim();
-
-      if (!memoText) {
-        alert('メモの内容を入力してください。');
-        return;
-      }
-
-      const originalText = btnEl.innerHTML;
-      btnEl.disabled = true;
-      btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 送信中...`;
-
-      try {
-        const iframeName = 'hidden_iframe_' + Date.now();
-        let iframe = document.getElementById(iframeName);
-        if (!iframe) {
-          iframe = document.createElement('iframe');
-          iframe.name = iframeName;
-          iframe.style.display = 'none';
-          document.body.appendChild(iframe);
-        }
-
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = MEMO_API_URL;
-        form.target = iframeName;
-
-        const payloadInput = document.createElement('input');
-        payloadInput.type = 'hidden';
-        payloadInput.name = 'payload';
-        payloadInput.value = JSON.stringify({
-          faq_id: faqId,
-          user_name: userName,
-          memo_text: memoText
-        });
-        form.appendChild(payloadInput);
-
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-
-        textEl.value = '';
-        setTimeout(() => {
-          loadMemos(faqId);
-          btnEl.disabled = false;
-          btnEl.innerHTML = originalText;
-        }, 1200);
-
-      } catch (err) {
-        alert('メモの投稿に失敗しました。');
-        btnEl.disabled = false;
-        btnEl.innerHTML = originalText;
-      }
-    }
-
-    async function deleteMemo(memoId, faqId, btnEl) {
-      if (!confirm('このメモを削除してもよろしいですか？')) return;
-
-      btnEl.disabled = true;
-      try {
-        const iframeName = 'hidden_iframe_del_' + Date.now();
-        let iframe = document.getElementById(iframeName);
-        if (!iframe) {
-          iframe = document.createElement('iframe');
-          iframe.name = iframeName;
-          iframe.style.display = 'none';
-          document.body.appendChild(iframe);
-        }
-
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = MEMO_API_URL;
-        form.target = iframeName;
-
-        const payloadInput = document.createElement('input');
-        payloadInput.type = 'hidden';
-        payloadInput.name = 'payload';
-        payloadInput.value = JSON.stringify({
-          action: 'delete',
-          id: memoId
-        });
-        form.appendChild(payloadInput);
-
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-
-        setTimeout(() => {
-          loadMemos(faqId);
-        }, 1200);
-      } catch (err) {
-        alert('メモの削除に失敗しました。');
-        btnEl.disabled = false;
-      }
-    }
-
-    function filterData() {
-      const normalize = value => String(value ?? '').toLocaleLowerCase('ja').replace(/[\s ]+/g, '');
-      const input = document.getElementById('searchInput');
-      const queryTerms = input.value.trim().split(/[\s ]+/).filter(Boolean).map(normalize);
-      const clearBtn = document.getElementById('clearBtn');
-      clearBtn.classList.toggle('hidden', queryTerms.length === 0);
-      clearBtn.classList.toggle('flex', queryTerms.length > 0);
-
-      const filtered = errorData.filter(rawItem => {
-        const code = rawItem.code || rawItem['エラーコード'] || '';
-        const category = rawItem.category || rawItem['分類'] || '';
-        const itemIsKiban = String(code).startsWith('KIB-') || String(category).includes('介護情報基盤');
-        if (currentSystem === 'kiban' && !itemIsKiban) return false;
-        if (currentSystem === 'plan' && itemIsKiban) return false;
-        
-        const searchable = [
-          rawItem['ID'], rawItem['id'], rawItem.id,
-          rawItem['エラーコード'], rawItem.code,
-          rawItem['見出し（タイトル）'], rawItem.title,
-          rawItem['対処手順'], rawItem.cause,
-          rawItem['分類'], rawItem.category,
-          rawItem['担当者メモ'], rawItem.memo
-        ].map(normalize).join(' ');
-        return queryTerms.every(term => searchable.includes(term));
-      });
-
-      filtered.sort((a, b) =>
-        (setupSequence[a.code || a['code']]?.order ?? Number.MAX_SAFE_INTEGER) -
-        (setupSequence[b.code || b['code']]?.order ?? Number.MAX_SAFE_INTEGER)
-      );
-      renderCards(filtered);
-    }
-
-    function setSystemFilter(system) {
-      currentSystem = system;
-      document.getElementById('systemAll').setAttribute('aria-pressed', String(system === 'all'));
-      document.getElementById('systemPlan').setAttribute('aria-pressed', String(system === 'plan'));
-      document.getElementById('systemKiban').setAttribute('aria-pressed', String(system === 'kiban'));
-      filterData();
-    }
-
-    function quickSearch(term) {
-      document.getElementById('searchInput').value = term;
-      filterData();
-      document.getElementById('searchInput').focus();
-    }
-
-    function clearSearch() {
-      document.getElementById('searchInput').value = '';
-      filterData();
-      document.getElementById('searchInput').focus();
-    }
-
-    function copyToClipboard(text, btn) {
-      navigator.clipboard.writeText(text).then(() => {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> 完了!`;
-        btn.classList.add('bg-emerald-100');
-        setTimeout(() => {
-          btn.innerHTML = originalText;
-          btn.classList.remove('bg-emerald-100');
-        }, 1500);
-      });
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-    }
-
-    function escapeWithPeriodBreaks(text) {
-      return escapeHtml(String(text ?? '').replace(/。(?=.)/g, '。\n'));
-    }
-
-    function linkifyUrlsWithPeriodBreaks(text) {
-      return String(text ?? '').split(/(https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+)/g).map((part, index) => {
-        if (index % 2 === 1) return linkifyUrls(part);
-        return escapeWithPeriodBreaks(part);
-      }).join('');
-    }
-
-    function linkifyUrls(str) {
-      const safeText = escapeHtml(String(str ?? ''));
-      return safeText.replace(/https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+/g, url =>
-        '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="underline decoration-amber-700/50 underline-offset-2 break-all hover:text-amber-800">' + url + '</a>'
-      );
-    }
-
-    function escapeJs(str) {
-      if (!str) return '';
-      return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
-    }
-
-    window.addEventListener('scroll', () => {
-      document.getElementById('backToTop').classList.toggle('hidden', window.scrollY < 400);
-    }, { passive: true });
-
-    fetchData();
-  </script>
-
-</body>
-</html>
+  // 削除後、少し待ってからメモ一覧を再読み込み
+  setTimeout(() => {
+    loadMemos();
+  }, 1200);
+}
