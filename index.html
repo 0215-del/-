@@ -314,6 +314,56 @@
       btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 送信中...`;
 
       try {
+        // 非表示のiframeとフォームを使って送信（CORSエラーを完全に回避）
+        const iframeName = 'hidden_iframe_' + Date.now();
+        let iframe = document.getElementById(iframeName);
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.name = iframeName;
+          iframe.style.display = 'none';
+          document.body.appendChild(iframe);
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = MEMO_API_URL;
+        form.target = iframeName;
+
+        // 送信するデータをフォームのinputとしてセット
+        const payloadInput = document.createElement('input');
+        payloadInput.type = 'hidden';
+        payloadInput.name = 'payload';
+        payloadInput.value = JSON.stringify({
+          faq_id: faqId,
+          user_name: userName,
+          memo_text: memoText
+        });
+        form.appendChild(payloadInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        // 入力をクリアして少し待ってからメモ一覧を再読み込み
+        textEl.value = '';
+        setTimeout(() => {
+          loadMemos(faqId);
+          btnEl.disabled = false;
+          btnEl.innerHTML = originalText;
+        }, 1200);
+
+      } catch (err) {
+        alert('メモの投稿に失敗しました。');
+        btnEl.disabled = false;
+        btnEl.innerHTML = originalText;
+      }
+    }
+
+      const originalText = btnEl.innerHTML;
+      btnEl.disabled = true;
+      btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 送信中...`;
+
+      try {
         await fetch(MEMO_API_URL, {
           method: 'POST',
           mode: 'no-cors',
