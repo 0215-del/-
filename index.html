@@ -16,8 +16,8 @@
         radial-gradient(ellipse at top left, rgba(204, 251, 241, .45), transparent 38rem),
         #f4f7f8;
     }
-    button, input { font: inherit; }
-    button:focus-visible, input:focus-visible { outline: 3px solid rgba(13, 148, 136, .35); outline-offset: 2px; }
+    button, input, textarea { font: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(13, 148, 136, .35); outline-offset: 2px; }
     .system-tab[aria-pressed="true"] { background:#0f766e; color:#fff; border-color:#0f766e; box-shadow:0 4px 12px rgba(15,118,110,.18); }
     .system-tab[aria-pressed="false"] { background:#fff; color:#475569; border-color:#e2e8f0; }
     .quick-search { transition: background-color .15s ease, transform .15s ease; }
@@ -117,6 +117,9 @@
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw4CR4Yh79rbVznHUClo5u89_0Ub28A55E_dI3w7vlxKmgjUf0IbfwZBpBppvm7G2M0BQ/exec";
+    
+    // メモ用GAS WebアプリURL
+    const MEMO_API_URL = "https://script.google.com/macros/s/AKfycbzYdPOFD1A3F8ET91FuJ0sWXfxfOZWdoaAR6l67VUMM9451qfcQ_Vp8HDHCgxSFu0Equg/exec";
 
     let errorData = [];
     let currentSystem = 'all';
@@ -175,11 +178,17 @@
         return;
       }
 
-      data.forEach((rawItem) => {
+      data.forEach((rawItem, idx) => {
         const setupSteps = setupSequence[rawItem.code || rawItem['code'] || ''];
+        const rawCode = rawItem["エラーコード"] || rawItem["code"] || "";
+        const rawTitle = rawItem["エラー内容"] || rawItem["title"] || "";
+        // IDがない場合はタイトルから生成
+        const faqId = rawCode || `FAQ_${idx}_${rawTitle.substring(0, 10).replace(/\s+/g, '_')}`;
+
         const item = {
-          code: rawItem["エラーコード"] || rawItem["code"] || "",
-          title: rawItem["エラー内容"] || rawItem["title"] || "",
+          faqId: faqId,
+          code: rawCode,
+          title: rawTitle,
           cause: rawItem["主な原因"] || rawItem["cause"] || "",
           solution: rawItem["対処方法・ご案内ステップ"] || rawItem["solution"] || "",
           category: rawItem["カテゴリ"] || rawItem["category"] || "",
@@ -229,23 +238,141 @@
 
           <!-- 過去事例・メモ -->
           ${item.memo ? `
-            <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/70">
+            <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/70 mb-4">
               <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
                 <i class="fa-solid fa-lightbulb text-amber-600"></i> 社内ナレッジ・過去事例
               </div>
               <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap break-words">${linkifyUrlsWithPeriodBreaks(item.memo)}</div>
             </div>
           ` : ''}
+
+          <!-- 共有メモ機能エリア -->
+          <div class="mt-5 pt-4 border-t border-slate-100 bg-slate-50/50 -mx-5 -mb-5 p-5 md:-mx-7 md:-mb-7 md:p-7 rounded-b-3xl">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                <i class="fa-solid fa-comments text-teal-600"></i> 閲覧者メモ・補足事項
+              </div>
+              <button onclick="toggleMemoList('${escapeJs(item.faqId)}')" class="text-xs text-teal-700 hover:text-teal-900 font-semibold flex items-center gap-1">
+                <span>メモを表示・追記</span>
+                <i class="fa-solid fa-chevron-down transition-transform duration-200" id="memo-icon-${escapeHtml(item.faqId)}"></i>
+              </button>
+            </div>
+
+            <!-- メモ表示 ＆ 投稿フォーム（初期状態は非表示） -->
+            <div id="memo-container-${escapeHtml(item.faqId)}" class="hidden mt-3 space-y-4">
+              <!-- メモ一覧領域 -->
+              <div id="memo-list-${escapeHtml(item.faqId)}" class="space-y-2 text-xs text-slate-600">
+                <p class="text-slate-400 italic"><i class="fa-solid fa-spinner fa-spin mr-1"></i> メモを読み込み中...</p>
+              </div>
+
+              <!-- メモ投稿フォーム -->
+              <div class="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-2 shadow-sm">
+                <div class="flex items-center gap-2">
+                  <input type="text" id="memo-user-${escapeHtml(item.faqId)}" placeholder="お名前・担当者名（任意）" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600">
+                </div>
+                <textarea id="memo-text-${escapeHtml(item.faqId)}" rows="2" placeholder="補足情報や過去の対応メモを入力..." class="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600 resize-y"></textarea>
+                <div class="flex justify-end">
+                  <button onclick="submitMemo('${escapeJs(item.faqId)}', this)" class="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-800 text-white rounded-xl text-xs font-bold hover:bg-teal-900 transition-colors shadow-sm">
+                    <i class="fa-solid fa-paper-plane"></i> メモを投稿
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         `;
         list.appendChild(card);
       });
     }
 
+    // メモエリアの開閉 toggle
+    function toggleMemoList(faqId) {
+      const container = document.getElementById(`memo-container-${faqId}`);
+      const icon = document.getElementById(`memo-icon-${faqId}`);
+      const isHidden = container.classList.contains('hidden');
+
+      if (isHidden) {
+        container.classList.remove('hidden');
+        if (icon) icon.classList.add('rotate-180');
+        loadMemos(faqId);
+      } else {
+        container.classList.add('hidden');
+        if (icon) icon.classList.remove('rotate-180');
+      }
+    }
+
+    // メモ一覧の取得（GAS GET通信）
+    async function loadMemos(faqId) {
+      const listEl = document.getElementById(`memo-list-${faqId}`);
+
+      try {
+        const res = await fetch(`${MEMO_API_URL}?faq_id=${encodeURIComponent(faqId)}`);
+        const json = await res.json();
+
+        if (json.status === 'success') {
+          if (!json.data || json.data.length === 0) {
+            listEl.innerHTML = '<p class="text-slate-400 italic bg-slate-100/70 p-2.5 rounded-xl">まだメモはありません。</p>';
+            return;
+          }
+
+          listEl.innerHTML = json.data.map(m => `
+            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+              <div class="flex items-center justify-between text-[11px] text-slate-500">
+                <span class="font-bold text-slate-700 flex items-center gap-1"><i class="fa-regular fa-user text-teal-600"></i> ${escapeHtml(m.user_name || '匿名')}</span>
+                <span class="text-slate-400">${escapeHtml(m.created_at || '')}</span>
+              </div>
+              <p class="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(m.memo_text || '')}</p>
+            </div>
+          `).join('');
+        } else {
+          listEl.innerHTML = '<p class="text-rose-500">メモの取得に失敗しました。</p>';
+        }
+      } catch (err) {
+        listEl.innerHTML = '<p class="text-rose-500">通信エラーが発生しました。</p>';
+      }
+    }
+
+    // メモの新規投稿（GAS POST通信）
+    async function submitMemo(faqId, btnEl) {
+      const userEl = document.getElementById(`memo-user-${faqId}`);
+      const textEl = document.getElementById(`memo-text-${faqId}`);
+      const userName = userEl.value.trim();
+      const memoText = textEl.value.trim();
+
+      if (!memoText) {
+        alert('メモの内容を入力してください。');
+        return;
+      }
+
+      const originalText = btnEl.innerHTML;
+      btnEl.disabled = true;
+      btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 送信中...`;
+
+      try {
+        await fetch(MEMO_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            faq_id: faqId,
+            user_name: userName,
+            memo_text: memoText
+          })
+        });
+
+        textEl.value = '';
+        await loadMemos(faqId);
+      } catch (err) {
+        alert('メモの投稿に失敗しました。');
+      } finally {
+        btnEl.disabled = false;
+        btnEl.innerHTML = originalText;
+      }
+    }
+
     // 検索フィルタ（コード・質問・原因・手順・分類・メモを横断）
     function filterData() {
-      const normalize = value => String(value ?? '').toLocaleLowerCase('ja').replace(/[\s　]+/g, '');
+      const normalize = value => String(value ?? '').toLocaleLowerCase('ja').replace(/[\s ]+/g, '');
       const input = document.getElementById('searchInput');
-      const queryTerms = input.value.trim().split(/[\s　]+/).filter(Boolean).map(normalize);
+      const queryTerms = input.value.trim().split(/[\s ]+/).filter(Boolean).map(normalize);
       const clearBtn = document.getElementById('clearBtn');
       clearBtn.classList.toggle('hidden', queryTerms.length === 0);
       clearBtn.classList.toggle('flex', queryTerms.length > 0);
@@ -287,7 +414,6 @@
       filterData();
       document.getElementById('searchInput').focus();
     }
-    
 
     function clearSearch() {
       document.getElementById('searchInput').value = '';
