@@ -1,198 +1,413 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>介護の手続き・トラブル検索</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f9f9f9; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { font-size: 20px; border-bottom: 2px solid #007bff; padding-bottom: 8px; }
-        .memo-section { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; }
-        textarea { width: 100%; height: 80px; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 8px; }
-        button:hover { background: #0056b3; }
-        .memo-item { background: #f1f3f5; padding: 10px 15px; border-radius: 4px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .memo-text { white-space: pre-wrap; word-break: break-all; flex-grow: 1; margin-right: 10px; }
-        .delete-btn { background: #dc3545; padding: 4px 8px; font-size: 12px; }
-        .delete-btn:hover { background: #a71d2a; }
-        #toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 10px 20px; border-radius: 4px; display: none; z-index: 1000; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ケアプラン連携システム トラブルナレッジ検索</title>
+  <!-- Tailwind CSS (デザインフレームワーク) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome (アイコンライブラリ) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root { color-scheme: light; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background:
+        radial-gradient(ellipse at top left, rgba(204, 251, 241, .45), transparent 38rem),
+        #f4f7f8;
+    }
+    button, input { font: inherit; }
+    button:focus-visible, input:focus-visible { outline: 3px solid rgba(13, 148, 136, .35); outline-offset: 2px; }
+    .system-tab[aria-pressed="true"] { background:#0f766e; color:#fff; border-color:#0f766e; box-shadow:0 4px 12px rgba(15,118,110,.18); }
+    .system-tab[aria-pressed="false"] { background:#fff; color:#475569; border-color:#e2e8f0; }
+    .quick-search { transition: background-color .15s ease, transform .15s ease; }
+    .quick-search:hover { transform: translateY(-1px); }
+  </style>
 </head>
-<body>
+<body class="text-slate-800 min-h-screen pb-12">
 
-<div class="container">
-    <h1>介護の手続き・トラブル検索</h1>
-    <p>キーワードやエラーコードで検索できます。（検索・カードUI等の既存機能）</p>
-
-    <!-- メモ機能セクション -->
-    <div class="memo-section">
-        <h3>担当者メモ</h3>
-        <textarea id="memo-input" placeholder="メモを入力してください..."></textarea>
-        <button onclick="handleSaveMemo()">メモを保存</button>
-
-        <div id="memo-list" style="margin-top: 20px;">
-            <p style="color: #666;">メモを読み込み中...</p>
+  <!-- ヘッダー -->
+  <header class="bg-gradient-to-r from-teal-950 via-teal-800 to-emerald-800 text-white shadow-lg">
+    <div class="max-w-6xl mx-auto px-4 py-7 md:py-9 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+      <div class="flex items-center gap-4">
+        <span class="h-12 w-12 shrink-0 rounded-2xl bg-white/10 ring-1 ring-white/20 flex items-center justify-center">
+          <i class="fa-solid fa-book-medical text-2xl text-teal-100"></i>
+        </span>
+        <div>
+          <h1 class="text-xl md:text-3xl font-extrabold tracking-tight">介護の手続き・トラブル検索</h1>
+          <p class="text-teal-100 text-sm mt-1">ケアプランデータ連携システム と 介護情報基盤</p>
         </div>
+      </div>
+      <div id="statusBadge" class="bg-white/10 border border-white/20 px-3.5 py-2 rounded-full text-xs font-medium text-teal-50 flex items-center gap-2">
+        <span id="statusDot" class="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></span>
+        <span id="statusText">データを確認中</span>
+      </div>
     </div>
-</div>
+  </header>
 
-<!-- 通知用トースト -->
-<div id="toast"></div>
+  <main class="max-w-6xl mx-auto px-4 -mt-5 md:-mt-6">
+    
+    <!-- 検索ボックス -->
+    <section class="bg-white rounded-3xl shadow-xl shadow-slate-900/5 p-5 md:p-7 mb-6 border border-white">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+        <div>
+          <p class="text-[11px] font-bold tracking-[.16em] text-teal-700 uppercase">Knowledge search</p>
+          <h2 class="text-lg md:text-xl font-bold text-slate-900 mt-1">知りたいことを検索</h2>
+          <p class="text-sm text-slate-500 mt-1">質問・原因・手順・分類から探せます。</p>
+        </div>
+        <button id="refreshBtn" onclick="fetchData()" class="self-start sm:self-auto inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-teal-800 transition-colors">
+          <i class="fa-solid fa-rotate-right"></i> 最新データを読み込む
+        </button>
+      </div>
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-700">
+          <i class="fa-solid fa-magnifying-glass text-lg"></i>
+        </div>
+        <input 
+          type="text" 
+          id="searchInput" 
+          aria-label="検索キーワード"
+          placeholder="例：初回登録、電子証明書、CSV送信、エラーコード"
+          oninput="filterData()"
+          class="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base md:text-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all duration-200"
+        >
+        <button id="clearBtn" aria-label="検索語を消去" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 px-4 items-center text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-circle-xmark text-lg"></i>
+        </button>
+      </div>
 
-<!-- 非表示iframe（POST時のCORS回避用） -->
-<iframe id="hidden-iframe" name="hidden-iframe" style="display:none;"></iframe>
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        <span class="text-xs font-semibold text-slate-500 mr-1">よく使う検索</span>
+        <button class="quick-search rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100" onclick="quickSearch('初期設定')">初期設定</button>
+        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('電子証明書')">電子証明書</button>
+        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('CSV')">CSV</button>
+        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('ログイン')">ログイン</button>
+      </div>
 
-<script>
-    // ▼ここにあなたのメモ用GASのウェブアプリURLを貼り付けてください
-    const MEMO_GAS_URL = "https://script.google.com/macros/s/YOUR_MEMO_GAS_URL_HERE/exec";
+      <div class="mt-6 pt-5 border-t border-slate-100">
+        <div class="text-xs font-semibold text-slate-500 mb-2.5">検索する情報</div>
+        <div class="flex flex-wrap gap-2" role="group" aria-label="検索対象システム">
+          <button id="systemAll" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="true" onclick="setSystemFilter('all')">すべて</button>
+          <button id="systemPlan" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('plan')">ケアプランデータ連携</button>
+          <button id="systemKiban" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('kiban')">介護情報基盤</button>
+        </div>
+      </div>
+      <div class="mt-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm">
+        <div id="stats" class="font-semibold text-slate-700">検索準備中...</div>
+        <div class="text-xs text-slate-400">スプレッドシートの更新内容は読み込み直すと反映されます</div>
+      </div>
+    </section>
 
-    // ページ読み込み時にメモを取得
-    window.addEventListener('DOMContentLoaded', () => {
-        loadMemos();
-    });
+    <!-- 結果カードリスト -->
+    <div id="cardList" class="space-y-4 pb-8">
+      <div class="text-center py-16 bg-white rounded-3xl shadow-sm border border-slate-200/70">
+        <i class="fa-solid fa-spinner fa-spin text-3xl text-teal-700 mb-3"></i>
+        <p class="text-slate-600 text-sm font-semibold">データを読み込み中...</p>
+      </div>
+    </div>
 
-    // 通知トーストを表示する関数
-    function showToast(message) {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.style.display = 'block';
-        setTimeout(() => {
-            toast.style.display = 'none';
-        }, 3000);
+  </main>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbw4CR4Yh79rbVznHUClo5u89_0Ub28A55E_dI3w7vlxKmgjUf0IbfwZBpBppvm7G2M0BQ/exec";
+
+    let errorData = [];
+    let currentSystem = 'all';
+
+    const setupSequence = {
+      'KIB-SET-001': { order: 10, label: '初期設定 1/4' },
+      'KIB-SET-004': { order: 20, label: '初期設定 2/4' },
+      'KIB-SET-005': { order: 30, label: '初期設定 3/4' },
+      'KIB-SET-003': { order: 40, label: '初期設定 4/4・証明書' },
+      'KIB-SET-006': { order: 50, label: '初期設定 4/4・WEBサービス登録' },
+      'KIB-SET-007': { order: 60, label: '初期設定 4/4・端末連携' },
+      'KIB-SET-002': { order: 70, label: '初期設定の補足・ユーザー追加' },
+      'KPD-SET-001': { order: 100, label: '' }
+    };
+
+    // データ取得
+    async function fetchData() {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        if (!Array.isArray(payload)) throw new Error('データ形式が一覧ではありません');
+        errorData = payload;
+        
+        document.getElementById('statusBadge').className = "bg-emerald-900/60 border border-emerald-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-emerald-100 flex items-center gap-2";
+        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-emerald-300";
+        document.getElementById('statusText').textContent = "データに接続中";
+
+        filterData();
+      } catch (error) {
+        document.getElementById('statusBadge').className = "bg-rose-900/60 border border-rose-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-rose-100 flex items-center gap-2";
+        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-rose-300";
+        document.getElementById('statusText').textContent = "通信エラー";
+        document.getElementById('cardList').innerHTML = `
+          <div class="text-center py-12 bg-rose-50 rounded-2xl border border-rose-200 text-rose-700 p-6">
+            <i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i>
+            <p class="font-bold">データの読み込みに失敗しました</p>
+            <p class="text-xs mt-1 text-rose-600">GASのアクセス権限またはURLをご確認ください。</p>
+          </div>
+        `;
+      }
     }
 
-    // 1. 【取得】メモを読み込んで画面に表示する関数
-    async function loadMemos() {
-        const memoListEl = document.getElementById('memo-list');
-        try {
-            const response = await fetch(MEMO_GAS_URL);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const memos = await response.json();
-            renderMemosUI(memos);
-        } catch (error) {
-            console.error("メモ取得エラー:", error);
-            memoListEl.innerHTML = '<p style="color: red;">メモの取得に失敗しました</p>';
-            showToast("メモの取得に失敗しました"); 
-        }
-    }
+    // カード描画
+    function renderCards(data) {
+      const list = document.getElementById('cardList');
+      const stats = document.getElementById('stats');
+      list.innerHTML = '';
+      stats.innerHTML = `該当 <span class="text-teal-800 text-base font-extrabold">${data.length}</span> 件 <span class="font-normal text-slate-400">/ 全 ${errorData.length} 件</span>`;
 
-    // メモ一覧の描画処理
-    function renderMemosUI(memos) {
-        const memoListEl = document.getElementById('memo-list');
-        memoListEl.innerHTML = '';
+      if (data.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-14 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+            <span class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><i class="fa-solid fa-magnifying-glass text-xl"></i></span>
+            <p class="font-bold text-slate-700">一致する情報が見つかりませんでした</p>
+            <p class="text-sm text-slate-500 mt-2">言葉を短くするか、別のキーワードをお試しください。</p>
+          </div>
+        `;
+        return;
+      }
 
-        if (!memos || memos.length === 0) {
-            memoListEl.innerHTML = '<p style="color: #666;">メモはまだありません。</p>';
-            return;
-        }
+      data.forEach((rawItem) => {
+        const item = normalizeArticle(rawItem);
+        const setupSteps = setupSequence[item.code] || setupSequence[rawItem.code] || {};
+        const personalNote = getArticleMemo(item.id);
 
-        memos.forEach(memo => {
-            const div = document.createElement('div');
-            div.className = 'memo-item';
-            
-            div.innerHTML = `
-                <div class="memo-text">
-                    <small style="color: #888; display: block; margin-bottom: 4px;">${memo.timestamp || ''}</small>
-                    ${escapeHtml(memo.text)}
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-3xl shadow-sm border border-slate-200/70 p-5 md:p-7 hover:shadow-lg hover:border-teal-200 transition-all duration-200 relative overflow-hidden";
+        card.dataset.articleId = item.id;
+
+        card.innerHTML = `
+          <!-- タグ・エラーコード -->
+          <div class="flex flex-wrap items-center gap-2 mb-3">
+            ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${item.category.includes('介護情報基盤') ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
+            ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-600"><i class="fa-solid fa-hashtag text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
+            ${setupSteps?.label ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">${escapeHtml(setupSteps.label)}</span>` : ''}
+          </div>
+
+          <!-- タイトル -->
+          <h2 class="text-lg md:text-xl font-bold text-slate-900 mb-4 leading-snug">
+            ${escapeHtml(item.title || '（見出し未設定）')}
+          </h2>
+
+          <!-- 主な原因 -->
+          ${item.cause ? `
+            <div class="mb-4 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <div class="text-xs font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
+                <i class="fa-solid fa-circle-info text-amber-500"></i> 主な原因
+              </div>
+              <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${escapeWithPeriodBreaks(item.cause)}</div>
+            </div>
+          ` : ''}
+
+          <!-- 対処方法 -->
+          ${item.solution ? `
+            <div class="mb-4 bg-emerald-50/70 rounded-2xl p-4 md:p-5 border border-emerald-100 relative group">
+              <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                <div class="text-sm font-bold text-emerald-900 flex items-center gap-2">
+                  <i class="fa-solid fa-circle-check text-emerald-600"></i> 対処方法・ご案内手順
                 </div>
-                <button class="delete-btn" onclick="deleteMemo('${memo.id}')">削除</button>
-            `;
-            memoListEl.appendChild(div);
-        });
+                <button aria-label="手順をコピー" onclick="copyToClipboard('${escapeJs(item.solution)}', this)" class="text-xs bg-white text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2 shadow-sm">
+                  <i class="fa-regular fa-copy"></i> 手順をコピー
+                </button>
+              </div>
+              <div class="text-sm md:text-base text-slate-800 leading-7 whitespace-pre-wrap">${escapeHtml(item.solution)}</div>
+            </div>
+          ` : ''}
+
+          <!-- 過去事例・メモ -->
+          ${item.memo ? `
+            <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/70">
+              <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
+                <i class="fa-solid fa-lightbulb text-amber-600"></i> 社内ナレッジ・過去事例
+              </div>
+              <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap">${linkifyUrlsWithPeriodBreaks(item.memo)}</div>
+            </div>
+          ` : ''}
+
+          <details class="mt-4 border-t border-slate-100 pt-3">
+            <summary class="cursor-pointer select-none text-sm font-semibold text-slate-600 hover:text-teal-800">担当者メモ</summary>
+            <div class="mt-3 space-y-2">
+              <p class="text-xs text-slate-500">このブラウザに保存されます。他の人とは共有されません。共有サイトのため、顧客名など個人情報は入力しないでください。</p>
+              <textarea data-memo-for="${escapeHtml(item.id)}" rows="3" class="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-100" placeholder="この記事に関する担当者メモ">${escapeHtml(personalNote)}</textarea>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="saveArticleMemo(this)" class="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800">このメモを保存</button>
+                <span class="text-xs text-slate-500" aria-live="polite"></span>
+              </div>
+            </div>
+          </details>
+        `;
+        list.appendChild(card);
+      });
     }
 
-    // XSS対策のエスケープ関数
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&'`<>"]/g, function(match) {
-            return {
-                '&': '&amp;',
-                QUOTE: '&quot;',
-                "'": '&#x27;',
-                '`': '&#x60;',
-                '<': '&lt;',
-                '>': '&gt;'
-            }[match];
-        });
-    }
-
-    // 保存ボタンを押したときの処理
-    function handleSaveMemo() {
-        const inputEl = document.getElementById('memo-input');
-        const textValue = inputEl.value.trim();
-        if (!textValue) {
-            alert('メモの内容を入力してください。');
-            return;
+    // シートの見出しが変更されても、既存列名・新しい列名のどちらからも読み取る。
+    function normalizeArticle(row) {
+      const pick = (...keys) => {
+        for (const key of keys) {
+          const value = row?.[key];
+          if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();
         }
-        saveMemo(textValue);
-        inputEl.value = '';
+        return '';
+      };
+      const code = pick('エラーコード', 'code', 'エラーID');
+      const fixedId = pick('faq_id', '記事ID', '固定ID', 'id');
+      const title = pick('エラー内容', '症状', '質問', 'タイトル', 'title');
+      const cause = pick('主な原因', '原因', '確認事項', '確認すること', 'cause');
+      const solution = pick('対処方法・ご案内手順', '対処方法・ご案内ステップ', '対処手順', '対処内容', '対処方法', 'ご案内手順', 'solution', 'steps');
+      const category = pick('カテゴリ', '分類', 'category');
+      const memo = pick('社内ナレッジ・過去事例', '社内ナレッジ', 'メモ', 'memo', '過去事例');
+      const fallbackSeed = Object.keys(row || {}).sort().map(key => `${key}:${row[key]}`).join('|');
+      const id = fixedId || code || `FAQ-${stableSlug(`${category}-${title || fallbackSeed}`)}`;
+      const confirmation = pick('解決確認', '解決したかの確認', '解決確認事項');
+      return { id, code, title, cause, solution, category, memo, confirmation };
     }
 
-    // 2. 【保存】iframe＋非表示フォームを使った書き込み処理（CORS回避）
-    function saveMemo(textValue) {
-        const form = document.createElement('form');
-        form.action = MEMO_GAS_URL;
-        form.method = 'POST';
-        form.target = 'hidden-iframe';
+    function stableSlug(value) {
+      const normalized = String(value || '').normalize('NFKC').trim().toLocaleLowerCase('ja');
+      let hash = 2166136261;
+      for (let i = 0; i < normalized.length; i++) hash = Math.imul(hash ^ normalized.charCodeAt(i), 16777619);
+      return (hash >>> 0).toString(36);
+    }
 
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = 'add';
-        form.appendChild(actionInput);
+    function getArticleMemo(articleId) {
+      try { return localStorage.getItem(`faq-note:${articleId}`) || ''; }
+      catch { return ''; }
+    }
 
-        const textInput = document.createElement('input');
-        textInput.type = 'hidden';
-        textInput.name = 'text';
-        textInput.value = textValue;
-        form.appendChild(textInput);
+    function saveArticleMemo(button) {
+      const card = button.closest('[data-article-id]');
+      const textarea = card?.querySelector('textarea[data-memo-for]');
+      const status = button.parentElement.querySelector('[aria-live="polite"]');
+      if (!card || !textarea) return;
+      try {
+        const value = textarea.value.trim();
+        if (value) localStorage.setItem(`faq-note:${card.dataset.articleId}`, value);
+        else localStorage.removeItem(`faq-note:${card.dataset.articleId}`);
+        status.textContent = 'このブラウザに保存しました';
+      } catch {
+        status.textContent = '保存できませんでした';
+      }
+    }
 
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
+    // 検索フィルタ（コード・質問・原因・手順・分類・メモを横断）
+    function filterData() {
+      const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja').replace(/[\s　]+/g, '');
+      const input = document.getElementById('searchInput');
+      const rawTerms = input.value.trim().split(/[\s　]+/).filter(Boolean).map(normalize);
+      const synonymGroups = [
+        ['ログインできない', 'ログインできません', '入れない', 'ログイン不可', 'アクセスできない'],
+        ['送れない', '送信できない', '送信エラー', '送信失敗'],
+        ['受け取れない', '受信できない', '受信エラー'],
+        ['開けない', '開かない', '表示されない', '見られない'],
+        ['取り込めない', '取込できない', 'インポートできない'],
+        ['出せない', '出力できない', 'エクスポートできない']
+      ];
+      const queryTerms = [...new Set(rawTerms.flatMap(term => {
+        const group = synonymGroups.find(items => items.some(item => normalize(item) === term));
+        return group ? [term, ...group.map(normalize)] : [term];
+      }))];
+      const clearBtn = document.getElementById('clearBtn');
+      clearBtn.classList.toggle('hidden', queryTerms.length === 0);
+      clearBtn.classList.toggle('flex', queryTerms.length > 0);
 
-        showToast("メモを保存中...");
-        // 送信後、少し待ってからメモ一覧を再読み込み
+      const filtered = errorData.filter(rawItem => {
+        const article = normalizeArticle(rawItem);
+        const code = article.code;
+        const category = rawItem.category || rawItem['分類'] || rawItem['カテゴリ'] || '';
+        const itemIsKiban = String(code).startsWith('KIB-') || String(category).includes('介護情報基盤');
+        if (currentSystem === 'kiban' && !itemIsKiban) return false;
+        if (currentSystem === 'plan' && itemIsKiban) return false;
+        const searchable = [
+          article.id, article.code, article.title, article.cause, article.solution,
+          article.category, article.memo, article.confirmation,
+          rawItem['解決確認'], rawItem['解決したかの確認'], rawItem['検索キーワード'], rawItem['言い換え'], rawItem['別の言い方'], rawItem['出典'], rawItem['出典元'], rawItem['メモ']
+        ].map(normalize).join(' ');
+        return queryTerms.every(term => searchable.includes(term));
+      });
+
+      filtered.sort((a, b) =>
+        (setupSequence[normalizeArticle(a).code]?.order ?? Number.MAX_SAFE_INTEGER) -
+        (setupSequence[normalizeArticle(b).code]?.order ?? Number.MAX_SAFE_INTEGER)
+      );
+      renderCards(filtered);
+    }
+
+    function setSystemFilter(system) {
+      currentSystem = system;
+      document.getElementById('systemAll').setAttribute('aria-pressed', String(system === 'all'));
+      document.getElementById('systemPlan').setAttribute('aria-pressed', String(system === 'plan'));
+      document.getElementById('systemKiban').setAttribute('aria-pressed', String(system === 'kiban'));
+      filterData();
+    }
+
+    function quickSearch(term) {
+      document.getElementById('searchInput').value = term;
+      filterData();
+      document.getElementById('searchInput').focus();
+    }
+    
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      filterData();
+      document.getElementById('searchInput').focus();
+    }
+
+    // テキストコピー機能
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> 完了!`;
+        btn.classList.add('bg-emerald-100');
         setTimeout(() => {
-            loadMemos();
+          btn.innerHTML = originalText;
+          btn.classList.remove('bg-emerald-100');
         }, 1500);
+      });
     }
 
-    // 3. 【削除】iframe＋非表示フォームを使った削除処理（CORS回避）
-    function deleteMemo(memoId) {
-        if (!confirm('このメモを削除してもよろしいですか？')) return;
-
-        const form = document.createElement('form');
-        form.action = MEMO_GAS_URL;
-        form.method = 'POST';
-        form.target = 'hidden-iframe';
-
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'action';
-        actionInput.value = 'delete';
-        form.appendChild(actionInput);
-
-        const idInput = document.createElement('input');
-        idInput.type = 'hidden';
-        idInput.name = 'id';
-        idInput.value = memoId;
-        form.appendChild(idInput);
-
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-
-        showToast("メモを削除中...");
-        // 削除後、少し待ってからメモ一覧を再読み込み
-        setTimeout(() => {
-            loadMemos();
-        }, 1500);
+    // エスケープ処理
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
     }
-</script>
+
+    function escapeWithPeriodBreaks(text) {
+      const formatted = String(text ?? '').replace(/。(?=.)/g, '。\n');
+      return escapeHtml(formatted);
+    }
+
+    function linkifyUrlsWithPeriodBreaks(text) {
+      return String(text ?? '').split(/(https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+)/g).map((part, index) => {
+        if (index % 2 === 1) return linkifyUrls(part);
+        return escapeHtml(part.replace(/。(?=.)/g, '。\n'));
+      }).join('');
+    }
+    function linkifyUrls(str) {
+      const safeText = escapeHtml(String(str ?? ''));
+      return safeText.replace(/https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+/g, url =>
+        `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline decoration-amber-700/50 underline-offset-2 break-all hover:text-amber-800">${url}</a>`
+      );
+    }
+
+    function escapeJs(str) {
+      if (!str) return '';
+      return str.replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\n/g, '\\n');
+    }
+
+    // 初期化
+    fetchData();
+  </script>
 
 </body>
 </html>
