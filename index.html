@@ -1,481 +1,81 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ケアプラン連携システム トラブルナレッジ検索</title>
-  <!-- Tailwind CSS (デザインフレームワーク) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Awesome (アイコンライブラリ) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    :root { color-scheme: light; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background:
-        radial-gradient(ellipse at top left, rgba(204, 251, 241, .45), transparent 38rem),
-        #f4f7f8;
-    }
-    button, input, textarea { font: inherit; }
-    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(13, 148, 136, .35); outline-offset: 2px; }
-    .system-tab[aria-pressed="true"] { background:#0f766e; color:#fff; border-color:#0f766e; box-shadow:0 4px 12px rgba(15,118,110,.18); }
-    .system-tab[aria-pressed="false"] { background:#fff; color:#475569; border-color:#e2e8f0; }
-    .quick-search { transition: background-color .15s ease, transform .15s ease; }
-    .quick-search:hover { transform: translateY(-1px); }
-  </style>
-</head>
-<body class="text-slate-800 min-h-screen pb-12">
+const SHEET_NAME = 'memos';
 
-  <!-- ヘッダー -->
-  <header class="bg-gradient-to-r from-teal-950 via-teal-800 to-emerald-800 text-white shadow-lg">
-    <div class="max-w-6xl mx-auto px-4 py-7 md:py-9 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-      <div class="flex items-center gap-4">
-        <span class="h-12 w-12 shrink-0 rounded-2xl bg-white/10 ring-1 ring-white/20 flex items-center justify-center">
-          <i class="fa-solid fa-book-medical text-2xl text-teal-100"></i>
-        </span>
-        <div>
-          <h1 class="text-xl md:text-3xl font-extrabold tracking-tight">介護の手続き・トラブル検索</h1>
-          <p class="text-teal-100 text-sm mt-1">ケアプランデータ連携システム と 介護情報基盤</p>
-        </div>
-      </div>
-      <div id="statusBadge" class="bg-white/10 border border-white/20 px-3.5 py-2 rounded-full text-xs font-medium text-teal-50 flex items-center gap-2">
-        <span id="statusDot" class="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></span>
-        <span id="statusText">データを確認中</span>
-      </div>
-    </div>
-  </header>
-
-  <main class="max-w-6xl mx-auto px-4 -mt-5 md:-mt-6">
+function doGet(e) {
+  try {
+    const faqId = e && e.parameter ? e.parameter.faq_id : '';
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_NAME);
     
-    <!-- 検索ボックス -->
-    <section class="bg-white rounded-3xl shadow-xl shadow-slate-900/5 p-5 md:p-7 mb-6 border border-white">
-      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
-        <div>
-          <p class="text-[11px] font-bold tracking-[.16em] text-teal-700 uppercase">Knowledge search</p>
-          <h2 class="text-lg md:text-xl font-bold text-slate-900 mt-1">知りたいことを検索</h2>
-          <p class="text-sm text-slate-500 mt-1">質問・原因・手順・分類から探せます。</p>
-        </div>
-        <button id="refreshBtn" onclick="fetchData()" class="self-start sm:self-auto inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-teal-800 transition-colors">
-          <i class="fa-solid fa-rotate-right"></i> 最新データを読み込む
-        </button>
-      </div>
-      <div class="relative">
-        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-700">
-          <i class="fa-solid fa-magnifying-glass text-lg"></i>
-        </div>
-        <input 
-          type="text" 
-          id="searchInput" 
-          aria-label="検索キーワード"
-          placeholder="例：初回登録、電子証明書、CSV送信、エラーコード"
-          oninput="filterData()"
-          class="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base md:text-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all duration-200"
-        >
-        <button id="clearBtn" aria-label="検索語を消去" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 px-4 items-center text-slate-400 hover:text-slate-700">
-          <i class="fa-solid fa-circle-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <div class="mt-4 flex flex-wrap items-center gap-2">
-        <span class="text-xs font-semibold text-slate-500 mr-1">よく使う検索</span>
-        <button class="quick-search rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100" onclick="quickSearch('初期設定')">初期設定</button>
-        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('電子証明書')">電子証明書</button>
-        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('CSV')">CSV</button>
-        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('ログイン')">ログイン</button>
-      </div>
-
-      <div class="mt-6 pt-5 border-t border-slate-100">
-        <div class="text-xs font-semibold text-slate-500 mb-2.5">検索する情報</div>
-        <div class="flex flex-wrap gap-2" role="group" aria-label="検索対象システム">
-          <button id="systemAll" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="true" onclick="setSystemFilter('all')">すべて</button>
-          <button id="systemPlan" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('plan')">ケアプランデータ連携</button>
-          <button id="systemKiban" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('kiban')">介護情報基盤</button>
-        </div>
-      </div>
-      <div class="mt-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm">
-        <div id="stats" class="font-semibold text-slate-700">検索準備中...</div>
-        <div class="text-xs text-slate-400">スプレッドシートの更新内容は読み込み直すと反映されます</div>
-      </div>
-    </section>
-
-    <!-- 結果カードリスト -->
-    <div id="cardList" class="space-y-4 pb-8">
-      <div class="text-center py-16 bg-white rounded-3xl shadow-sm border border-slate-200/70">
-        <i class="fa-solid fa-spinner fa-spin text-3xl text-teal-700 mb-3"></i>
-        <p class="text-slate-600 text-sm font-semibold">データを読み込み中...</p>
-      </div>
-    </div>
-
-  </main>
-
-  <button id="backToTop" type="button" aria-label="ページの先頭へ戻る" title="上に戻る"
-    class="hidden fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-teal-800 text-white shadow-lg ring-1 ring-white/70 transition hover:-translate-y-1 hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-300 md:bottom-6 md:right-6"
-    onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
-    <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
-    <span class="sr-only">上に戻る</span>
-  </button>
-
-  <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbw4CR4Yh79rbVznHUClo5u89_0Ub28A55E_dI3w7vlxKmgjUf0IbfwZBpBppvm7G2M0BQ/exec";
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME);
+      sheet.appendRow(['id', 'faq_id', 'created_at', 'user_name', 'memo_text']);
+    }
     
-    // メモ用GAS WebアプリURL
-    const MEMO_API_URL = "https://script.google.com/macros/s/AKfycbzYdPOFD1A3F8ET91FuJ0sWXfxfOZWdoaAR6l67VUMM9451qfcQ_Vp8HDHCgxSFu0Equg/exec";
-
-    let errorData = [];
-    let currentSystem = 'all';
-
-    const setupSequence = {
-      'KIB-SET-001': { order: 10, label: '初期設定 1/4' },
-      'KIB-SET-004': { order: 20, label: '初期設定 2/4' },
-      'KIB-SET-005': { order: 30, label: '初期設定 3/4' },
-      'KIB-SET-003': { order: 40, label: '初期設定 4/4・証明書' },
-      'KIB-SET-006': { order: 50, label: '初期設定 4/4・WEBサービス登録' },
-      'KIB-SET-007': { order: 60, label: '初期設定 4/4・端末連携' },
-      'KIB-SET-002': { order: 70, label: '初期設定の補足・ユーザー追加' },
-      'KPD-SET-001': { order: 100, label: '' }
-    };
-
-    // データ取得
-    async function fetchData() {
-      try {
-        const response = await fetch(API_URL);
-        errorData = await response.json();
-        
-        document.getElementById('statusBadge').className = "bg-emerald-900/60 border border-emerald-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-emerald-100 flex items-center gap-2";
-        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-emerald-300";
-        document.getElementById('statusText').textContent = "最新データに接続中";
-
-        filterData();
-      } catch (error) {
-        document.getElementById('statusBadge').className = "bg-rose-900/60 border border-rose-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-rose-100 flex items-center gap-2";
-        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-rose-300";
-        document.getElementById('statusText').textContent = "通信エラー";
-        document.getElementById('cardList').innerHTML = `
-          <div class="text-center py-12 bg-rose-50 rounded-2xl border border-rose-200 text-rose-700 p-6">
-            <i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i>
-            <p class="font-bold">データの読み込みに失敗しました</p>
-            <p class="text-xs mt-1 text-rose-600">GASのアクセス権限またはURLをご確認ください。</p>
-          </div>
-        `;
-      }
-    }
-
-    // カード描画
-    function renderCards(data) {
-      const list = document.getElementById('cardList');
-      const stats = document.getElementById('stats');
-      list.innerHTML = '';
-      stats.innerHTML = `該当 <span class="text-teal-800 text-base font-extrabold">${data.length}</span> 件 <span class="font-normal text-slate-400">/ 全 ${errorData.length} 件</span>`;
-
-      if (data.length === 0) {
-        list.innerHTML = `
-          <div class="text-center py-14 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-            <span class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><i class="fa-solid fa-magnifying-glass text-xl"></i></span>
-            <p class="font-bold text-slate-700">一致する情報が見つかりませんでした</p>
-            <p class="text-sm text-slate-500 mt-2">言葉を短くするか、別のキーワードをお試しください。</p>
-          </div>
-        `;
-        return;
-      }
-
-      data.forEach((rawItem, idx) => {
-        const setupSteps = setupSequence[rawItem.code || rawItem['code'] || ''];
-        const rawCode = rawItem["エラーコード"] || rawItem["code"] || "";
-        const rawTitle = rawItem["エラー内容"] || rawItem["title"] || "";
-        // IDがない場合はタイトルから生成
-        const faqId = rawCode || `FAQ_${idx}_${rawTitle.substring(0, 10).replace(/\s+/g, '_')}`;
-
-        const item = {
-          faqId: faqId,
-          code: rawCode,
-          title: rawTitle,
-          cause: rawItem["主な原因"] || rawItem["cause"] || "",
-          solution: rawItem["対処方法・ご案内ステップ"] || rawItem["solution"] || "",
-          category: rawItem["カテゴリ"] || rawItem["category"] || "",
-          memo: rawItem["社内ナレッジ・過去事例"] || rawItem["memo"] || ""
-        };
-
-        const card = document.createElement('div');
-        card.className = "bg-white rounded-3xl shadow-sm border border-slate-200/70 p-5 md:p-7 hover:shadow-lg hover:border-teal-200 transition-all duration-200 relative overflow-hidden";
-
-        card.innerHTML = `
-          <!-- タグ・エラーコード -->
-          <div class="flex flex-wrap items-center gap-2 mb-3">
-            ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${item.category.includes('介護情報基盤') ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
-            ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-600"><i class="fa-solid fa-hashtag text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
-            ${setupSteps?.label ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">${escapeHtml(setupSteps.label)}</span>` : ''}
-          </div>
-
-          <!-- タイトル -->
-          <h2 class="text-lg md:text-xl font-bold text-slate-900 mb-4 leading-snug break-words">
-            ${escapeHtml(item.title)}
-          </h2>
-
-          <!-- 主な原因 -->
-          ${item.cause ? `
-            <div class="mb-4 bg-slate-50 rounded-2xl p-4 border border-slate-100">
-              <div class="text-xs font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
-                <i class="fa-solid fa-circle-info text-amber-500"></i> 主な原因
-              </div>
-              <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">${escapeWithPeriodBreaks(item.cause)}</div>
-            </div>
-          ` : ''}
-
-          <!-- 対処方法 -->
-          ${item.solution ? `
-            <div class="mb-4 bg-emerald-50/70 rounded-2xl p-4 md:p-5 border border-emerald-100 relative group">
-              <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
-                <div class="text-sm font-bold text-emerald-900 flex items-center gap-2">
-                  <i class="fa-solid fa-circle-check text-emerald-600"></i> 対処方法・ご案内手順
-                </div>
-                <button aria-label="手順をコピー" onclick="copyToClipboard('${escapeJs(item.solution)}', this)" class="text-xs bg-white text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2 shadow-sm">
-                  <i class="fa-regular fa-copy"></i> 手順をコピー
-                </button>
-              </div>
-              <div class="text-sm md:text-base text-slate-800 leading-7 whitespace-pre-wrap break-words">${escapeHtml(item.solution)}</div>
-            </div>
-          ` : ''}
-
-          <!-- 過去事例・メモ -->
-          ${item.memo ? `
-            <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/70 mb-4">
-              <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
-                <i class="fa-solid fa-lightbulb text-amber-600"></i> 社内ナレッジ・過去事例
-              </div>
-              <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap break-words">${linkifyUrlsWithPeriodBreaks(item.memo)}</div>
-            </div>
-          ` : ''}
-
-          <!-- 共有メモ機能エリア -->
-          <div class="mt-5 pt-4 border-t border-slate-100 bg-slate-50/50 -mx-5 -mb-5 p-5 md:-mx-7 md:-mb-7 md:p-7 rounded-b-3xl">
-            <div class="flex items-center justify-between mb-3">
-              <div class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                <i class="fa-solid fa-comments text-teal-600"></i> 閲覧者メモ・補足事項
-              </div>
-              <button onclick="toggleMemoList('${escapeJs(item.faqId)}')" class="text-xs text-teal-700 hover:text-teal-900 font-semibold flex items-center gap-1">
-                <span>メモを表示・追記</span>
-                <i class="fa-solid fa-chevron-down transition-transform duration-200" id="memo-icon-${escapeHtml(item.faqId)}"></i>
-              </button>
-            </div>
-
-            <!-- メモ表示 ＆ 投稿フォーム（初期状態は非表示） -->
-            <div id="memo-container-${escapeHtml(item.faqId)}" class="hidden mt-3 space-y-4">
-              <!-- メモ一覧領域 -->
-              <div id="memo-list-${escapeHtml(item.faqId)}" class="space-y-2 text-xs text-slate-600">
-                <p class="text-slate-400 italic"><i class="fa-solid fa-spinner fa-spin mr-1"></i> メモを読み込み中...</p>
-              </div>
-
-              <!-- メモ投稿フォーム -->
-              <div class="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-2 shadow-sm">
-                <div class="flex items-center gap-2">
-                  <input type="text" id="memo-user-${escapeHtml(item.faqId)}" placeholder="お名前・担当者名（任意）" class="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600">
-                </div>
-                <textarea id="memo-text-${escapeHtml(item.faqId)}" rows="2" placeholder="補足情報や過去の対応メモを入力..." class="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600 resize-y"></textarea>
-                <div class="flex justify-end">
-                  <button onclick="submitMemo('${escapeJs(item.faqId)}', this)" class="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-800 text-white rounded-xl text-xs font-bold hover:bg-teal-900 transition-colors shadow-sm">
-                    <i class="fa-solid fa-paper-plane"></i> メモを投稿
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        list.appendChild(card);
-      });
-    }
-
-    // メモエリアの開閉 toggle
-    function toggleMemoList(faqId) {
-      const container = document.getElementById(`memo-container-${faqId}`);
-      const icon = document.getElementById(`memo-icon-${faqId}`);
-      const isHidden = container.classList.contains('hidden');
-
-      if (isHidden) {
-        container.classList.remove('hidden');
-        if (icon) icon.classList.add('rotate-180');
-        loadMemos(faqId);
-      } else {
-        container.classList.add('hidden');
-        if (icon) icon.classList.remove('rotate-180');
-      }
-    }
-
-    // メモ一覧の取得（GAS GET通信）
-    async function loadMemos(faqId) {
-      const listEl = document.getElementById(`memo-list-${faqId}`);
-
-      try {
-        const res = await fetch(`${MEMO_API_URL}?faq_id=${encodeURIComponent(faqId)}`);
-        const json = await res.json();
-
-        if (json.status === 'success') {
-          if (!json.data || json.data.length === 0) {
-            listEl.innerHTML = '<p class="text-slate-400 italic bg-slate-100/70 p-2.5 rounded-xl">まだメモはありません。</p>';
-            return;
-          }
-
-          listEl.innerHTML = json.data.map(m => `
-            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
-              <div class="flex items-center justify-between text-[11px] text-slate-500">
-                <span class="font-bold text-slate-700 flex items-center gap-1"><i class="fa-regular fa-user text-teal-600"></i> ${escapeHtml(m.user_name || '匿名')}</span>
-                <span class="text-slate-400">${escapeHtml(m.created_at || '')}</span>
-              </div>
-              <p class="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(m.memo_text || '')}</p>
-            </div>
-          `).join('');
-        } else {
-          listEl.innerHTML = '<p class="text-rose-500">メモの取得に失敗しました。</p>';
-        }
-      } catch (err) {
-        listEl.innerHTML = '<p class="text-rose-500">通信エラーが発生しました。</p>';
-      }
-    }
-
-    // メモの新規投稿（GAS POST通信）
-    async function submitMemo(faqId, btnEl) {
-      const userEl = document.getElementById(`memo-user-${faqId}`);
-      const textEl = document.getElementById(`memo-text-${faqId}`);
-      const userName = userEl.value.trim();
-      const memoText = textEl.value.trim();
-
-      if (!memoText) {
-        alert('メモの内容を入力してください。');
-        return;
-      }
-
-      const originalText = btnEl.innerHTML;
-      btnEl.disabled = true;
-      btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 送信中...`;
-
-      try {
-        await fetch(MEMO_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            faq_id: faqId,
-            user_name: userName,
-            memo_text: memoText
-          })
+    const data = sheet.getDataRange().getValues();
+    const memos = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]) === String(faqId)) {
+        memos.push({
+          id: data[i][0],
+          faq_id: data[i][1],
+          created_at: data[i][2] ? Utilities.formatDate(new Date(data[i][2]), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss') : '',
+          user_name: data[i][3],
+          memo_text: data[i][4]
         });
-
-        textEl.value = '';
-        await loadMemos(faqId);
-      } catch (err) {
-        alert('メモの投稿に失敗しました。');
-      } finally {
-        btnEl.disabled = false;
-        btnEl.innerHTML = originalText;
       }
     }
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: memos }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
-    // 検索フィルタ（コード・質問・原因・手順・分類・メモを横断）
-    function filterData() {
-      const normalize = value => String(value ?? '').toLocaleLowerCase('ja').replace(/[\s ]+/g, '');
-      const input = document.getElementById('searchInput');
-      const queryTerms = input.value.trim().split(/[\s ]+/).filter(Boolean).map(normalize);
-      const clearBtn = document.getElementById('clearBtn');
-      clearBtn.classList.toggle('hidden', queryTerms.length === 0);
-      clearBtn.classList.toggle('flex', queryTerms.length > 0);
+function doPost(e) {
+  try {
+    const contents = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME);
+      sheet.appendRow(['id', 'faq_id', 'created_at', 'user_name', 'memo_text']);
+    }
+    
+    // 削除処理（action: 'delete' の場合）
+    if (contents.action === 'delete') {
+      const targetId = contents.id;
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]) === String(targetId)) {
+          sheet.deleteRow(i + 1);
+          return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+      throw new Error('該当するメモが見つかりませんでした');
+    }
+    
+    // 投稿処理
+    const now = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+    const memoId = 'MEMO_' + new Date().getTime() + '_' + Math.floor(Math.random() * 1000);
+    const faqId = contents.faq_id;
+    const userName = contents.user_name || '匿名';
+    const memoText = contents.memo_text;
 
-      const filtered = errorData.filter(rawItem => {
-        const code = rawItem.code || rawItem['エラーコード'] || '';
-        const category = rawItem.category || rawItem['分類'] || rawItem['カテゴリ'] || '';
-        const itemIsKiban = String(code).startsWith('KIB-') || String(category).includes('介護情報基盤');
-        if (currentSystem === 'kiban' && !itemIsKiban) return false;
-        if (currentSystem === 'plan' && itemIsKiban) return false;
-        const searchable = [
-          rawItem['エラーコード'], rawItem.code,
-          rawItem['エラー内容'], rawItem.title,
-          rawItem['原因'], rawItem['主な原因'], rawItem.cause,
-          rawItem['対処方法'], rawItem['対処方法・ご案内ステップ'], rawItem.solution,
-          rawItem['分類'], rawItem['カテゴリ'], rawItem.category,
-          rawItem['社内ナレッジ'], rawItem['社内ナレッジ・過去事例'], rawItem.memo
-        ].map(normalize).join(' ');
-        return queryTerms.every(term => searchable.includes(term));
-      });
-
-      filtered.sort((a, b) =>
-        (setupSequence[a.code || a['code']]?.order ?? Number.MAX_SAFE_INTEGER) -
-        (setupSequence[b.code || b['code']]?.order ?? Number.MAX_SAFE_INTEGER)
-      );
-      renderCards(filtered);
+    if (!faqId || !memoText) {
+      throw new Error('必須項目が不足しています');
     }
 
-    function setSystemFilter(system) {
-      currentSystem = system;
-      document.getElementById('systemAll').setAttribute('aria-pressed', String(system === 'all'));
-      document.getElementById('systemPlan').setAttribute('aria-pressed', String(system === 'plan'));
-      document.getElementById('systemKiban').setAttribute('aria-pressed', String(system === 'kiban'));
-      filterData();
-    }
+    sheet.appendRow([memoId, faqId, now, userName, memoText]);
 
-    function quickSearch(term) {
-      document.getElementById('searchInput').value = term;
-      filterData();
-      document.getElementById('searchInput').focus();
-    }
-
-    function clearSearch() {
-      document.getElementById('searchInput').value = '';
-      filterData();
-      document.getElementById('searchInput').focus();
-    }
-
-    // テキストコピー機能
-    function copyToClipboard(text, btn) {
-      navigator.clipboard.writeText(text).then(() => {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> 完了!`;
-        btn.classList.add('bg-emerald-100');
-        setTimeout(() => {
-          btn.innerHTML = originalText;
-          btn.classList.remove('bg-emerald-100');
-        }, 1500);
-      });
-    }
-
-    // エスケープ処理
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-    }
-
-    function escapeWithPeriodBreaks(text) {
-      return escapeHtml(String(text ?? '').replace(/。(?=.)/g, '。\n'));
-    }
-
-    function linkifyUrlsWithPeriodBreaks(text) {
-      return String(text ?? '').split(/(https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+)/g).map((part, index) => {
-        if (index % 2 === 1) return linkifyUrls(part);
-        return escapeWithPeriodBreaks(part);
-      }).join('');
-    }
-
-    function linkifyUrls(str) {
-      const safeText = escapeHtml(String(str ?? ''));
-      return safeText.replace(/https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+/g, url =>
-        '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="underline decoration-amber-700/50 underline-offset-2 break-all hover:text-amber-800">' + url + '</a>'
-      );
-    }
-
-    function escapeJs(str) {
-      if (!str) return '';
-      return str.replace(/\\/g, '\\\\')
-                .replace(/'/g, "\\'")
-                .replace(/\n/g, '\\n');
-    }
-
-    window.addEventListener('scroll', () => {
-      document.getElementById('backToTop').classList.toggle('hidden', window.scrollY < 400);
-    }, { passive: true });
-
-    // 初期化
-    fetchData();
-  </script>
-
-</body>
-</html>
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
