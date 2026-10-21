@@ -108,6 +108,13 @@
 
   </main>
 
+  <button id="backToTop" type="button" aria-label="ページの先頭へ戻る" title="上に戻る"
+    class="hidden fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-teal-800 text-white shadow-lg ring-1 ring-white/70 transition hover:-translate-y-1 hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-300 md:bottom-6 md:right-6"
+    onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
+    <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+    <span class="sr-only">上に戻る</span>
+  </button>
+
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw4CR4Yh79rbVznHUClo5u89_0Ub28A55E_dI3w7vlxKmgjUf0IbfwZBpBppvm7G2M0BQ/exec";
 
@@ -322,6 +329,10 @@
                 .replace(/'/g, "\\'")
                 .replace(/\n/g, '\\n');
     }
+
+    window.addEventListener('scroll', () => {
+      document.getElementById('backToTop').classList.toggle('hidden', window.scrollY < 400);
+    }, { passive: true });
 
     // 初期化
     fetchData();
