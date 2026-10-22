@@ -409,5 +409,26 @@
     fetchData();
   </script>
 
+
+  <!-- ページ上部に戻るボタン -->
+  <button
+    id="backToTop"
+    type="button"
+    aria-label="ページ上部に戻る"
+    title="ページ上部に戻る"
+    style="display:none; position:fixed; right:24px; bottom:24px; z-index:9999; width:48px; height:48px; border:0; border-radius:50%; background:#0f766e; color:white; font-size:24px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.2);"
+  >↑</button>
+
+  <script>
+    const backToTopButton = document.getElementById('backToTop');
+
+    window.addEventListener('scroll', function () {
+      backToTopButton.style.display = window.scrollY > 300 ? 'block' : 'none';
+    });
+
+    backToTopButton.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
 </body>
 </html>
