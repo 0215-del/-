@@ -312,28 +312,33 @@
 
     // ニュアンス検索フィルタ（裏側で同義語や関連ワードを自動展開してスッキリ検索）
     function filterData() {
-      const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja').replace(/[\s ]+/g, '');
+      const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja');
       const input = document.getElementById('searchInput');
-      const rawTerms = input.value.trim().split(/[\s ]+/).filter(Boolean).map(normalize);
+      const rawQuery = normalize(input.value).trim();
       
-      // よくあるお困りごとのニュアンス・同義語自動展開辞書
-      const synonymGroups = [
-        ['ログインできない', 'ログインできません', '入れない', 'ログイン不可', 'アクセスできない', '認証エラー', 'パスワード'],
-        ['送れない', '送信できない', '送信エラー', '送信失敗', '未送信'],
-        ['受け取れない', '受信できない', '受信エラー'],
-        ['開けない', '開かない', '表示されない', '見られない'],
-        ['取り込めない', '取込できない', 'インポートできない', 'csv', 'データ'],
-        ['出せない', '出力できない', 'エクスポートできない']
-      ];
-
-      const queryTerms = [...new Set(rawTerms.flatMap(term => {
-        const group = synonymGroups.find(items => items.some(item => normalize(item).includes(term) || term.includes(normalize(item))));
-        return group ? [term, ...group.map(normalize)] : [term];
-      }))];
-
       const clearBtn = document.getElementById('clearBtn');
-      clearBtn.classList.toggle('hidden', queryTerms.length === 0);
-      clearBtn.classList.toggle('flex', queryTerms.length > 0);
+      clearBtn.classList.toggle('hidden', rawQuery === '');
+      clearBtn.classList.toggle('flex', rawQuery !== '');
+
+      // よくあるお困りごとのニュアンス・同義語マッピング
+      const synonyms = {
+        '送信できない': ['送信できない', '未送信', '送信失敗', '送れない', 'エラー'],
+        '送れない': ['送信できない', '未送信', '送信失敗', '送れない', 'エラー'],
+        '未送信': ['送信できない', '未送信', '送信失敗', '送れない', 'エラー'],
+        'ログインできない': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード'],
+        'ログイン': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード'],
+        '電子証明書': ['電子証明書', '証明書', 'デジタル証明書'],
+        'csv': ['csv', 'データ', '取り込み', '出力']
+      };
+
+      // 入力されたキーワードに一致する同義語グループを展開
+      let searchTerms = [rawQuery];
+      for (const [key, terms] of Object.entries(synonyms)) {
+        if (rawQuery.includes(key)) {
+          searchTerms = terms;
+          break;
+        }
+      }
 
       const filtered = errorData.filter(rawItem => {
         const article = normalizeArticle(rawItem);
@@ -343,16 +348,16 @@
         if (currentSystem === 'kiban' && !itemIsKiban) return false;
         if (currentSystem === 'plan' && itemIsKiban) return false;
         
+        if (rawQuery === '') return true;
+
         const searchable = [
           article.id, article.code, article.title, article.cause, article.solution,
           article.category, article.memo, article.confirmation,
           rawItem['解決確認'], rawItem['解決したかの確認'], rawItem['検索キーワード'], rawItem['言い換え'], rawItem['別の言い方'], rawItem['出典'], rawItem['出典元'], rawItem['メモ']
         ].map(normalize).join(' ');
 
-        if (queryTerms.length === 0) return true;
-        
-        // ニュアンス検索：展開されたキーワードのいずれかに部分一致すればヒット
-        return queryTerms.some(term => searchable.includes(term));
+        // 展開されたいずれかの同義語キーワードが含まれているか判定
+        return searchTerms.some(term => searchable.includes(term));
       });
 
       filtered.sort((a, b) =>
