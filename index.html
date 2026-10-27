@@ -1,398 +1,463 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>介護情報基盤・介護プランデータ連携システム トラブルシューティング検索</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ケアプラン連携システム トラブルナレッジ検索</title>
+  <!-- Tailwind CSS (デザインフレームワーク) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome (アイコンライブラリ) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root { color-scheme: light; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background:
+        radial-gradient(ellipse at top left, rgba(204, 251, 241, .45), transparent 38rem),
+        #f4f7f8;
+    }
+    button, input { font: inherit; }
+    button:focus-visible, input:focus-visible { outline: 3px solid rgba(13, 148, 136, .35); outline-offset: 2px; }
+    .system-tab[aria-pressed="true"] { background:#0f766e; color:#fff; border-color:#0f766e; box-shadow:0 4px 12px rgba(15,118,110,.18); }
+    .system-tab[aria-pressed="false"] { background:#fff; color:#475569; border-color:#e2e8f0; }
+    .quick-search { transition: background-color .15s ease, transform .15s ease; }
+    .quick-search:hover { transform: translateY(-1px); }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="text-slate-800 min-h-screen pb-12">
 
-    <!-- Header -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center space-x-3">
-                <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                </div>
-                <div>
-                    <h1 class="text-base sm:text-lg font-bold text-slate-900">介護情報基盤・データ連携 トラブルシューティング</h1>
-                    <p class="text-xs text-slate-500">口語・ニュアンス対応スマート検索サポート（介護プランデータ連携システム対応）</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span class="w-1.5 h-1.5 mr-1.5 bg-emerald-600 rounded-full animate-pulse"></span>
-                    拡張シソーラス・あいまい検索稼働中
-                </span>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-8">
-        <!-- Search Hero Section -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 mb-8">
-            <label for="searchInput" class="block text-sm font-bold text-slate-700 mb-2">お困りの症状やエラー、日常的な言い回しを入力してください</label>
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </div>
-                <input type="text" id="searchInput" 
-                    placeholder="例: 「送信できない」「ログイン画面に入れない」「証明書エラー」「重い・遅い」「パスワード忘れた」など" 
-                    class="w-full pl-11 pr-24 py-3.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all text-sm sm:text-base">
-                <div class="absolute inset-y-1.5 right-1.5 flex items-center">
-                    <button id="clearBtn" class="hidden px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg transition-colors mr-1">クリア</button>
-                </div>
-            </div>
-
-            <!-- Quick Tags / Suggestions -->
-            <div class="mt-4 flex flex-wrap items-center gap-2">
-                <span class="text-xs font-medium text-slate-500">クイック検索:</span>
-                <button onclick="setQuery('送信できない')" class="px-3 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 text-xs rounded-lg border border-slate-200 transition-colors">送信できない</button>
-                <button onclick="setQuery('ログインできない')" class="px-3 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 text-xs rounded-lg border border-slate-200 transition-colors">ログインできない</button>
-                <button onclick="setQuery('証明書エラー')" class="px-3 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 text-xs rounded-lg border border-slate-200 transition-colors">証明書エラー</button>
-                <button onclick="setQuery('画面が固まる')" class="px-3 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 text-xs rounded-lg border border-slate-200 transition-colors">画面が固まる</button>
-                <button onclick="setQuery('重い・遅い')" class="px-3 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 text-xs rounded-lg border border-slate-200 transition-colors">重い・遅い</button>
-                <button onclick="setQuery('パスワード忘れた')" class="px-3 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 text-xs rounded-lg border border-slate-200 transition-colors">パスワード忘れた</button>
-            </div>
-            
-            <!-- Expansion Notification Box -->
-            <div id="expansionNotice" class="mt-4 hidden p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-800 flex items-center justify-between">
-                <div class="flex items-center space-x-2">
-                    <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span id="expansionText">ニュアンス検索展開中</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Search Results Section -->
+  <!-- ヘッダー -->
+  <header class="bg-gradient-to-r from-teal-950 via-teal-800 to-emerald-800 text-white shadow-lg">
+    <div class="max-w-6xl mx-auto px-4 py-7 md:py-9 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+      <div class="flex items-center gap-4">
+        <span class="h-12 w-12 shrink-0 rounded-2xl bg-white/10 ring-1 ring-white/20 flex items-center justify-center">
+          <i class="fa-solid fa-book-medical text-2xl text-teal-100"></i>
+        </span>
         <div>
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wider">検索結果 (<span id="resultCount">0</span>件)</h2>
-                <div class="text-xs text-slate-500">介護プランデータ連携・情報基盤システム対応Q&amp;A</div>
-            </div>
-
-            <div id="resultsContainer" class="space-y-4">
-                <!-- Dynamic Results Inserted Here -->
-            </div>
-
-            <!-- Empty State -->
-            <div id="emptyState" class="hidden bg-white border border-slate-200 rounded-2xl p-12 text-center">
-                <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </div>
-                <h3 class="text-base font-bold text-slate-800 mb-1">一致する項目が見つかりませんでした</h3>
-                <p class="text-xs text-slate-500 max-w-md mx-auto mb-4">キーワードを変えるか、より短い単語（例：「送信」「エラー」「証明書」など）でお試しください。</p>
-                <button onclick="clearSearch()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-medium transition-colors shadow-sm">すべてのトラブルシューティングを表示</button>
-            </div>
+          <h1 class="text-xl md:text-3xl font-extrabold tracking-tight">介護の手続き・トラブル検索</h1>
+          <p class="text-teal-100 text-sm mt-1">ケアプランデータ連携システム と 介護情報基盤</p>
         </div>
-    </main>
+      </div>
+      <div id="statusBadge" class="bg-white/10 border border-white/20 px-3.5 py-2 rounded-full text-xs font-medium text-teal-50 flex items-center gap-2">
+        <span id="statusDot" class="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></span>
+        <span id="statusText">データを確認中</span>
+      </div>
+    </div>
+  </header>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 mt-auto py-6 text-center text-xs text-slate-500">
-        <p>&copy; 2026 介護情報基盤・介護プランデータ連携システム サポートデスク. All rights reserved.</p>
-    </footer>
+  <main class="max-w-6xl mx-auto px-4 -mt-5 md:-mt-6">
+    
+    <!-- 検索ボックス -->
+    <section class="bg-white rounded-3xl shadow-xl shadow-slate-900/5 p-5 md:p-7 mb-6 border border-white">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+        <div>
+          <p class="text-[11px] font-bold tracking-[.16em] text-teal-700 uppercase">Knowledge search</p>
+          <h2 class="text-lg md:text-xl font-bold text-slate-900 mt-1">知りたいことを検索</h2>
+          <p class="text-sm text-slate-500 mt-1">質問・原因・手順・分類から探せます。</p>
+        </div>
+        <button id="refreshBtn" onclick="fetchData()" class="self-start sm:self-auto inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-teal-800 transition-colors">
+          <i class="fa-solid fa-rotate-right"></i> 最新データを読み込む
+        </button>
+      </div>
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-700">
+          <i class="fa-solid fa-magnifying-glass text-lg"></i>
+        </div>
+        <input 
+          type="text" 
+          id="searchInput" 
+          aria-label="検索キーワード"
+          placeholder="例：初回登録、電子証明書、CSV送信、エラーコード"
+          oninput="filterData()"
+          class="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base md:text-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all duration-200"
+        >
+        <button id="clearBtn" aria-label="検索語を消去" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 px-4 items-center text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-circle-xmark text-lg"></i>
+        </button>
+      </div>
 
-    <!-- JavaScript for Advanced Synonym & Semantic Search -->
-    <script>
-        // Comprehensive Troubleshooting Data for Care Information Infrastructure & Care Plan Data Collaboration System
-        const kbData = [
-            {
-                id: 1,
-                title: "ケアプランデータ・XMLファイルの送信ができない / 未送信になる",
-                system: "介護プランデータ連携システム",
-                category: "送信・データ連携",
-                tags: ["送信できない", "未送信", "送信失敗", "送れない", "エラー", "タイムアウト", "アップロードできない", "データ連携エラー"],
-                description: "居宅介護支援事業所から地域包括支援センターや施設へケアプランデータを送信する際、処理が止まり「未送信」ステータスになる、または「送信失敗」エラーになる現象。",
-                steps: [
-                    "ネットワーク接続および介護情報基盤へのアクセスが正常か確認してください。",
-                    "送信するXMLデータが指定された標準仕様・スキーマに準拠しているか確認してください。",
-                    "ファイルサイズが上限（通常制限値）を超えていないか、不要な文字が含まれていないか確認してください。",
-                    "システム混雑による一時的なタイムアウトの可能性があります。数分待ってから「未送信一覧」より再送をお試しください。"
-                ],
-                status: "重要"
-            },
-            {
-                id: 2,
-                title: "ログイン画面に入れない / 認証エラー・パスワードを忘れた場合",
-                system: "共通基盤・共通ポータル",
-                category: "認証・アカウント",
-                tags: ["ログインできない", "ログイン画面に入れない", "認証失敗", "パスワード忘れた", "入れない", "ログインエラー", "ID失念"],
-                description: "システムのログイン画面を開けない、あるいはIDやパスワードを入力しても「認証に失敗しました」と表示されてシステムに入れない場合。",
-                steps: [
-                    "ブラウザのURL（ブックマーク）が古い可能性があります。公式のポータルURLからアクセスし直してください。",
-                    "ID（事業所ID・利用者ID）およびパスワードに半角・全角や大文字・小文字の誤りがないかご確認ください。",
-                    "パスワードを失念した場合は、ログイン画面の「パスワードをお持ちでない方・お忘れの方」から再発行手続きを行ってください。"
-                ],
-                status: "よくある質問"
-            },
-            {
-                id: 3,
-                title: "電子証明書の有効期限切れ・証明書エラーについて",
-                system: "介護情報基盤",
-                category: "セキュリティ・証明書",
-                tags: ["証明書", "証明書エラー", "期限切れ", "電子証明書", "ICカード", "セキュリティ警告", "SSLエラー"],
-                description: "電子証明書の有効期限が切れている、またはブラウザや端末が電子証明書を正しく認識せず「証明書エラー」「信頼できない接続」と表示される。",
-                steps: [
-                    "電子証明書（ICカードまたはファイル形式）の有効期限が切れていないか発行元・管理画面より確認してください。",
-                    "期限切れの場合は、速やかに電子証明書の更新・再発行手続きを実施してください。",
-                    "ブラウザや専用クライアントソフトに最新のルート証明書・中間証明書がインポートされているか確認してください。"
-                ],
-                status: "要確認"
-            },
-            {
-                id: 4,
-                title: "画面が固まる・フリーズする・動作が重い・遅い",
-                system: "全般システム",
-                category: "パフォーマンス",
-                tags: ["画面が固まる", "重い", "遅い", "フリーズ", "動かない", "固まった", "応答なし", "重い・遅い"],
-                description: "ケアプランの一覧表示や検索、データ読み込み時に画面が動かなくなったり（フリーズ）、処理に極端に時間がかかる現象。",
-                steps: [
-                    "ブラウザのキャッシュおよびCookieを削除し、一度ブラウザを再起動してください。",
-                    "同時に複数のタブや大量のデータを一度に処理している場合は、件数を絞って検索してください。",
-                    "回線速度が低下している、またはサーバー側でアクセス集中が発生している可能性があります。時間をおいてアクセスしてください。"
-                ],
-                status: "一般"
-            },
-            {
-                id: 5,
-                title: "利用者情報のダウンロード・インポートができない",
-                system: "介護プランデータ連携システム",
-                category: "データ取り込み",
-                tags: ["ダウンロードできない", "インポートエラー", "取り込めない", "ファイルエラー", "データ反映されない", "エラーが出る"],
-                description: "他事業所から連携されたケアプランデータやCSV/XMLファイルをダウンロード・取り込みしようとするとエラーが発生する。",
-                steps: [
-                    "ファイル形式がシステムでサポートされている拡張子（.xml, .csv等）であることを確認してください。",
-                    "利用者の受給者番号や被保険者番号に誤り・欠損がないか確認してください。",
-                    "ブラウザのポップアップブロック機能が有効になっており、ダウンロードがブロックされていないか確認してください。"
-                ],
-                status: "解決可能"
-            },
-            {
-                id: 6,
-                title: "「予期せぬエラーが発生しました（エラーコード: 500/403）」と表示される",
-                system: "共通基盤",
-                category: "システムエラー",
-                tags: ["エラーが出る", "エラーコード", "予期せぬエラー", "システムエラー", "アクセス拒否", "403", "500"],
-                description: "操作の途中で突然ポップアップや画面全体にシステムエラーメッセージやエラーコードが表示される。",
-                steps: [
-                    "一度ログアウトし、ブラウザを完全に閉じてから再度ログインし直してください。",
-                    "ブラウザの拡張機能（アドブロック等）がシステムスクリプトをブロックしていないか確認してください。",
-                    "エラーコードと発生時刻を控え、システム管理者またはサポートデスクにお問い合わせください。"
-                ],
-                status: "注意"
-            }
-        ];
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        <span class="text-xs font-semibold text-slate-500 mr-1">よく使う検索</span>
+        <button class="quick-search rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100" onclick="quickSearch('初期設定')">初期設定</button>
+        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('電子証明書')">電子証明書</button>
+        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('CSV')">CSV</button>
+        <button class="quick-search rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200" onclick="quickSearch('ログイン')">ログイン</button>
+      </div>
 
-        // Extended Synonym / Nuance Dictionary (口語・日常表現・関連ワードのマッピング)
-        const synonymDictionary = {
-            "送信できない": ["未送信", "送信失敗", "送れない", "エラー", "タイムアウト", "アップロードできない", "データ連携エラー"],
-            "未送信": ["送信できない", "送信失敗", "送れない", "エラー"],
-            "送信失敗": ["送信できない", "未送信", "送れない", "エラー"],
-            "ログインできない": ["ログイン画面に入れない", "入れない", "認証失敗", "パスワード忘れた", "ログインエラー", "ID失念"],
-            "ログイン画面に入れない": ["ログインできない", "入れない", "認証失敗", "ログインエラー"],
-            "入れない": ["ログインできない", "ログイン画面に入れない", "認証失敗"],
-            "パスワード忘れた": ["ログインできない", "認証失敗", "ID失念"],
-            "証明書": ["証明書エラー", "期限切れ", "電子証明書", "ICカード", "セキュリティ警告", "SSLエラー"],
-            "証明書エラー": ["証明書", "期限切れ", "電子証明書", "ICカード", "セキュリティ警告"],
-            "期限切れ": ["証明書", "証明書エラー", "電子証明書"],
-            "重い・遅い": ["重い", "遅い", "画面が固まる", "フリーズ", "動かない", "固まった", "応答なし"],
-            "重い": ["重い・遅い", "遅い", "画面が固まる", "フリーズ"],
-            "遅い": ["重い・遅い", "重い", "画面が固まる", "フリーズ"],
-            "画面が固まる": ["重い", "遅い", "フリーズ", "動かない", "固まった", "応答なし", "重い・遅い"],
-            "フリーズ": ["画面が固まる", "重い", "遅い", "動かない", "固まった"],
-            "動かない": ["画面が固まる", "フリーズ", "重い", "遅い", "固まった"],
-            "固まった": ["画面が固まる", "フリーズ", "重い", "遅い", "動かない"],
-            "エラーが出る": ["エラー", "予期せぬエラー", "システムエラー", "エラーコード", "403", "500"],
-            "ダウンロードできない": ["インポートエラー", "取り込めない", "ファイルエラー", "データ反映されない"]
-        };
+      <div class="mt-6 pt-5 border-t border-slate-100">
+        <div class="text-xs font-semibold text-slate-500 mb-2.5">検索する情報</div>
+        <div class="flex flex-wrap gap-2" role="group" aria-label="検索対象システム">
+          <button id="systemAll" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="true" onclick="setSystemFilter('all')">すべて</button>
+          <button id="systemPlan" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('plan')">ケアプランデータ連携</button>
+          <button id="systemKiban" class="system-tab rounded-xl border px-4 py-2 text-sm font-semibold transition-all" aria-pressed="false" onclick="setSystemFilter('kiban')">介護情報基盤</button>
+        </div>
+      </div>
+      <div class="mt-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm">
+        <div id="stats" class="font-semibold text-slate-700">検索準備中...</div>
+        <div class="text-xs text-slate-400">スプレッドシートの更新内容は読み込み直すと反映されます</div>
+      </div>
+    </section>
 
-        const searchInput = document.getElementById('searchInput');
-        const clearBtn = document.getElementById('clearBtn');
-        const resultsContainer = document.getElementById('resultsContainer');
-        const resultCount = document.getElementById('resultCount');
-        const emptyState = document.getElementById('emptyState');
-        const expansionNotice = document.getElementById('expansionNotice');
-        const expansionText = document.getElementById('expansionText');
+    <!-- 結果カードリスト -->
+    <div id="cardList" class="space-y-4 pb-8">
+      <div class="text-center py-16 bg-white rounded-3xl shadow-sm border border-slate-200/70">
+        <i class="fa-solid fa-spinner fa-spin text-3xl text-teal-700 mb-3"></i>
+        <p class="text-slate-600 text-sm font-semibold">データを読み込み中...</p>
+      </div>
+    </div>
 
-        function setQuery(keyword) {
-            searchInput.value = keyword;
-            performSearch();
-            searchInput.focus();
+  </main>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbw4CR4Yh79rbVznHUClo5u89_0Ub28A55E_dI3w7vlxKmgjUf0IbfwZBpBppvm7G2M0BQ/exec";
+
+
+const SHARED_MEMO_URL = "https://script.google.com/macros/s/AKfycbx0s9EJI8RCnojpyXo0F80NWpLUhxmGshCvcC68MVdrlEOTGuJXpMW06WQW6v3yorWW_A/exec";
+
+
+    let errorData = [];
+    let currentSystem = 'all';
+
+    const setupSequence = {
+      'KIB-SET-001': { order: 10, label: '初期設定 1/4' },
+      'KIB-SET-004': { order: 20, label: '初期設定 2/4' },
+      'KIB-SET-005': { order: 30, label: '初期設定 3/4' },
+      'KIB-SET-003': { order: 40, label: '初期設定 4/4・証明書' },
+      'KIB-SET-006': { order: 50, label: '初期設定 4/4・WEBサービス登録' },
+      'KIB-SET-007': { order: 60, label: '初期設定 4/4・端末連携' },
+      'KIB-SET-002': { order: 70, label: '初期設定の補足・ユーザー追加' },
+      'KPD-SET-001': { order: 100, label: '' }
+    };
+
+    // データ取得
+    async function fetchData() {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        if (!Array.isArray(payload)) throw new Error('データ形式が一覧ではありません');
+        errorData = payload;
+        
+        document.getElementById('statusBadge').className = "bg-emerald-900/60 border border-emerald-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-emerald-100 flex items-center gap-2";
+        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-emerald-300";
+        document.getElementById('statusText').textContent = "データに接続中";
+
+        filterData();
+      } catch (error) {
+        document.getElementById('statusBadge').className = "bg-rose-900/60 border border-rose-300/30 px-3.5 py-2 rounded-full text-xs font-medium text-rose-100 flex items-center gap-2";
+        document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-rose-300";
+        document.getElementById('statusText').textContent = "通信エラー";
+        document.getElementById('cardList').innerHTML = `
+          <div class="text-center py-12 bg-rose-50 rounded-2xl border border-rose-200 text-rose-700 p-6">
+            <i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i>
+            <p class="font-bold">データの読み込みに失敗しました</p>
+            <p class="text-xs mt-1 text-rose-600">GASのアクセス権限またはURLをご確認ください。</p>
+          </div>
+        `;
+      }
+    }
+
+    // カード描画
+    function renderCards(data) {
+      const list = document.getElementById('cardList');
+      const stats = document.getElementById('stats');
+      list.innerHTML = '';
+      stats.innerHTML = `該当 <span class="text-teal-800 text-base font-extrabold">${data.length}</span> 件 <span class="font-normal text-slate-400">/ 全 ${errorData.length} 件</span>`;
+
+      if (data.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-14 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+            <span class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><i class="fa-solid fa-magnifying-glass text-xl"></i></span>
+            <p class="font-bold text-slate-700">一致する情報が見つかりませんでした</p>
+            <p class="text-sm text-slate-500 mt-2">言葉を短くするか、別のキーワードをお試しください。</p>
+          </div>
+        `;
+        return;
+      }
+
+      data.forEach((rawItem) => {
+        const item = normalizeArticle(rawItem);
+        const setupSteps = setupSequence[item.code] || setupSequence[rawItem.code] || {};
+
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-3xl shadow-sm border border-slate-200/70 p-5 md:p-7 hover:shadow-lg hover:border-teal-200 transition-all duration-200 relative overflow-hidden";
+        card.dataset.articleId = item.id;
+
+        card.innerHTML = `
+          <!-- タグ・エラーコード -->
+          <div class="flex flex-wrap items-center gap-2 mb-3">
+            ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${item.category.includes('介護情報基盤') ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
+            ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-600"><i class="fa-solid fa-hashtag text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
+            ${setupSteps?.label ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">${escapeHtml(setupSteps.label)}</span>` : ''}
+          </div>
+
+          <!-- タイトル -->
+          <h2 class="text-lg md:text-xl font-bold text-slate-900 mb-4 leading-snug">
+            ${escapeHtml(item.title || '（見出し未設定）')}
+          </h2>
+
+          <!-- 主な原因 -->
+          ${item.cause ? `
+            <div class="mb-4 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <div class="text-xs font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
+                <i class="fa-solid fa-circle-info text-amber-500"></i> 主な原因
+              </div>
+              <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${escapeWithPeriodBreaks(item.cause)}</div>
+            </div>
+          ` : ''}
+
+          <!-- 対処方法 -->
+          ${item.solution ? `
+            <div class="mb-4 bg-emerald-50/70 rounded-2xl p-4 md:p-5 border border-emerald-100 relative group">
+              <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                <div class="text-sm font-bold text-emerald-900 flex items-center gap-2">
+                  <i class="fa-solid fa-circle-check text-emerald-600"></i> 対処方法・ご案内手順
+                </div>
+                <button aria-label="手順をコピー" onclick="copyToClipboard('${escapeJs(item.solution)}', this)" class="text-xs bg-white text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2 shadow-sm">
+                  <i class="fa-regular fa-copy"></i> 手順をコピー
+                </button>
+              </div>
+              <div class="text-sm md:text-base text-slate-800 leading-7 whitespace-pre-wrap">${escapeHtml(item.solution)}</div>
+            </div>
+          ` : ''}
+
+          <!-- 過去事例・メモ -->
+          ${item.memo ? `
+            <div class="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/70">
+              <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
+                <i class="fa-solid fa-lightbulb text-amber-600"></i> 社内ナレッジ・過去事例
+              </div>
+              <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap">${linkifyUrlsWithPeriodBreaks(item.memo)}</div>
+            </div>
+          ` : ''}
+
+        
+<details class="mt-4 border-t border-slate-100 pt-3">
+  <summary class="cursor-pointer select-none text-sm font-semibold text-slate-600 hover:text-teal-800">
+    担当者メモ（職場内共有）
+  </summary>
+  <div class="mt-3 space-y-2">
+    <p class="text-xs text-slate-500">
+      許可された職場アカウントで共有メモを開きます。
+      メモは共通の保存先に保存され、ほかの端末からも確認できます。
+      顧客名などの個人情報は入力しないでください。
+    </p>
+    <button
+      type="button"
+      onclick="openSharedMemo(this)"
+      class="rounded-lg bg-teal-700 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-800">
+      <i class="fa-solid fa-users mr-1"></i>
+      共有メモを開く
+    </button>
+  </div>
+</details>
+
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    // シートの見出しが変更されても、既存列名・新しい列名のどちらからも読み取る。
+    function normalizeArticle(row) {
+      const pick = (...keys) => {
+        for (const key of keys) {
+          const value = row?.[key];
+          if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();
         }
+        return '';
+      };
+      const code = pick('エラーコード', 'code', 'エラーID');
+      const fixedId = pick('faq_id', '記事ID', '固定ID', 'id');
+      const title = pick('エラー内容', '症状', '質問', 'タイトル', 'title');
+      const cause = pick('主な原因', '原因', '確認事項', '確認すること', 'cause');
+      const solution = pick('対処方法・ご案内手順', '対処方法・ご案内ステップ', '対処手順', '対処内容', '対処方法', 'ご案内手順', 'solution', 'steps');
+      const category = pick('カテゴリ', '分類', 'category');
+      const memo = pick('社内ナレッジ・過去事例', '社内ナレッジ', 'メモ', 'memo', '過去事例');
+      const fallbackSeed = Object.keys(row || {}).sort().map(key => `${key}:${row[key]}`).join('|');
+      const id = fixedId || code || `FAQ-${stableSlug(`${category}-${title || fallbackSeed}`)}`;
+      const confirmation = pick('解決確認', '解決したかの確認', '解決確認事項');
+      return { id, code, title, cause, solution, category, memo, confirmation };
+    }
 
-        function clearSearch() {
-            searchInput.value = '';
-            performSearch();
-            searchInput.focus();
-        }
+    function stableSlug(value) {
+      const normalized = String(value || '').normalize('NFKC').trim().toLocaleLowerCase('ja');
+      let hash = 2166136261;
+      for (let i = 0; i < normalized.length; i++) hash = Math.imul(hash ^ normalized.charCodeAt(i), 16777619);
+      return (hash >>> 0).toString(36);
+    }
 
-        // Semantic & Fuzzy Search Engine with Synonym Expansion
-        function performSearch() {
-            const rawQuery = searchInput.value.trim().toLowerCase();
-            
-            if (rawQuery.length > 0) {
-                clearBtn.classList.remove('hidden');
-            } else {
-                clearBtn.classList.add('hidden');
-                expansionNotice.classList.add('hidden');
-            }
+  
+function openSharedMemo(button) {
+  const card = button.closest('[data-article-id]');
+  if (!card) {
+    alert('記事情報を取得できませんでした。');
+    return;
+  }
 
-            if (!rawQuery) {
-                renderResults(kbData);
-                resultCount.textContent = kbData.length;
-                emptyState.classList.add('hidden');
-                return;
-            }
+  const articleId = card.dataset.articleId;
+  const titleElement = card.querySelector('h2');
+  const articleTitle = titleElement
+    ? titleElement.textContent.trim()
+    : 'FAQ';
 
-            // 1. Tokenize query
-            const queryTokens = rawQuery.split(/[\s　]+/);
+  if (!articleId) {
+    alert('記事IDが確認できません。');
+    return;
+  }
 
-            // 2. Expand with Synonym Dictionary
-            let expandedKeywords = new Set(queryTokens);
-            let appliedSynonyms = [];
+  if (
+    !SHARED_MEMO_URL ||
+    SHARED_MEMO_URL.includes('ここに共有メモ用')
+  ) {
+    alert('共有メモ用ウェブアプリのURLを設定してください。');
+    return;
+  }
 
-            queryTokens.forEach(token => {
-                for (let [key, syns] of Object.entries(synonymDictionary)) {
-                    if (key.toLowerCase().includes(token) || token.includes(key.toLowerCase())) {
-                        syns.forEach(s => expandedKeywords.add(s));
-                        appliedSynonyms.push(key, ...syns);
-                    } else {
-                        syns.forEach(s => {
-                            if (s.toLowerCase().includes(token) || token.includes(s.toLowerCase())) {
-                                expandedKeywords.add(key);
-                                syns.forEach(subS => expandedKeywords.add(subS));
-                                appliedSynonyms.push(key, ...syns);
-                            }
-                        });
-                    }
-                }
-            });
+  const separator = SHARED_MEMO_URL.includes('?') ? '&' : '?';
+  const url = SHARED_MEMO_URL + separator +
+    'id=' + encodeURIComponent(articleId) +
+    '&title=' + encodeURIComponent(articleTitle);
 
-            // Notification message generation
-            const uniqueSynonyms = Array.from(new Set(appliedSynonyms)).filter(s => !queryTokens.includes(s));
-            if (uniqueSynonyms.length > 0) {
-                expansionNotice.classList.remove('hidden');
-                expansionText.textContent = `「${rawQuery}」の口語表現・ニュアンスを解析：「${uniqueSynonyms.slice(0, 5).join('、')}」等の関連トラブル項目も含めて検索しています。`;
-            } else {
-                expansionNotice.classList.add('hidden');
-            }
+  window.open(url, '_blank', 'noopener');
+}
 
-            // 3. Scoring & Weighted Matching
-            const scoredResults = kbData.map(item => {
-                let score = 0;
-                const titleLower = item.title.toLowerCase();
-                const descLower = item.description.toLowerCase();
-                const systemLower = item.system.toLowerCase();
-                const categoryLower = item.category.toLowerCase();
-                const tagsLower = item.tags.map(t => t.toLowerCase());
 
-                // Exact raw query match
-                if (titleLower.includes(rawQuery)) score += 120;
-                if (descLower.includes(rawQuery)) score += 40;
-                if (systemLower.includes(rawQuery)) score += 60;
-                if (categoryLower.includes(rawQuery)) score += 50;
+    // 検索フィルタ（コード・質問・原因・手順・分類・メモを横断）
+    function filterData() {
+      const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja').replace(/[\s　]+/g, '');
+      const input = document.getElementById('searchInput');
+      const rawTerms = input.value.trim().split(/[\s　]+/).filter(Boolean).map(normalize);
+      const synonymGroups = [
+        ['ログインできない', 'ログインできません', '入れない', 'ログイン不可', 'アクセスできない'],
+        ['送れない', '送信できない', '送信エラー', '送信失敗'],
+        ['受け取れない', '受信できない', '受信エラー'],
+        ['開けない', '開かない', '表示されない', '見られない'],
+        ['取り込めない', '取込できない', 'インポートできない'],
+        ['出せない', '出力できない', 'エクスポートできない']
+      ];
+      const queryTerms = [...new Set(rawTerms.flatMap(term => {
+        const group = synonymGroups.find(items => items.some(item => normalize(item) === term));
+        return group ? [term, ...group.map(normalize)] : [term];
+      }))];
+      const clearBtn = document.getElementById('clearBtn');
+      clearBtn.classList.toggle('hidden', queryTerms.length === 0);
+      clearBtn.classList.toggle('flex', queryTerms.length > 0);
 
-                // Tag direct match
-                item.tags.forEach(tag => {
-                    const tLower = tag.toLowerCase();
-                    if (tLower === rawQuery || tLower.includes(rawQuery) || rawQuery.includes(tLower)) {
-                        score += 100;
-                    }
-                });
+      const filtered = errorData.filter(rawItem => {
+        const article = normalizeArticle(rawItem);
+        const code = article.code;
+        const category = rawItem.category || rawItem['分類'] || rawItem['カテゴリ'] || '';
+        const itemIsKiban = String(code).startsWith('KIB-') || String(category).includes('介護情報基盤');
+        if (currentSystem === 'kiban' && !itemIsKiban) return false;
+        if (currentSystem === 'plan' && itemIsKiban) return false;
+        const searchable = [
+          article.id, article.code, article.title, article.cause, article.solution,
+          article.category, article.memo, article.confirmation,
+          rawItem['解決確認'], rawItem['解決したかの確認'], rawItem['検索キーワード'], rawItem['言い換え'], rawItem['別の言い方'], rawItem['出典'], rawItem['出典元'], rawItem['メモ']
+        ].map(normalize).join(' ');
+        return queryTerms.every(term => searchable.includes(term));
+      });
 
-                // Expanded keyword matching
-                expandedKeywords.forEach(kw => {
-                    if (kw.toLowerCase() === rawQuery) return;
-                    const kwLower = kw.toLowerCase();
-                    if (titleLower.includes(kwLower)) score += 50;
-                    if (descLower.includes(kwLower)) score += 20;
-                    item.tags.forEach(tag => {
-                        if (tag.toLowerCase().includes(kwLower)) score += 45;
-                    });
-                });
+      filtered.sort((a, b) =>
+        (setupSequence[normalizeArticle(a).code]?.order ?? Number.MAX_SAFE_INTEGER) -
+        (setupSequence[normalizeArticle(b).code]?.order ?? Number.MAX_SAFE_INTEGER)
+      );
+      renderCards(filtered);
+    }
 
-                // Token partial matching fallback
-                queryTokens.forEach(token => {
-                    if (titleLower.includes(token)) score += 20;
-                    if (descLower.includes(token)) score += 10;
-                });
+    function setSystemFilter(system) {
+      currentSystem = system;
+      document.getElementById('systemAll').setAttribute('aria-pressed', String(system === 'all'));
+      document.getElementById('systemPlan').setAttribute('aria-pressed', String(system === 'plan'));
+      document.getElementById('systemKiban').setAttribute('aria-pressed', String(system === 'kiban'));
+      filterData();
+    }
 
-                return { item, score };
-            });
+    function quickSearch(term) {
+      document.getElementById('searchInput').value = term;
+      filterData();
+      document.getElementById('searchInput').focus();
+    }
+    
 
-            // Filter and sort
-            const filtered = scoredResults
-                .filter(res => res.score > 0)
-                .sort((a, b) => b.score - a.score)
-                .map(res => res.item);
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      filterData();
+      document.getElementById('searchInput').focus();
+    }
 
-            renderResults(filtered);
-            resultCount.textContent = filtered.length;
+    // テキストコピー機能
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> 完了!`;
+        btn.classList.add('bg-emerald-100');
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.classList.remove('bg-emerald-100');
+        }, 1500);
+      });
+    }
 
-            if (filtered.length === 0) {
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-            }
-        }
+    // エスケープ処理
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+    }
 
-        // Render Results HTML
-        function renderResults(items) {
-            if (items.length === 0) {
-                resultsContainer.innerHTML = '';
-                return;
-            }
+    function escapeWithPeriodBreaks(text) {
+      const formatted = String(text ?? '').replace(/。(?=.)/g, '。\n');
+      return escapeHtml(formatted);
+    }
 
-            resultsContainer.innerHTML = items.map(item => {
-                return `
-                    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs hover:border-emerald-300 transition-all">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-                                <span class="px-2.5 py-1 bg-emerald-50 text-emerald-800 text-xs font-semibold rounded-lg border border-emerald-100">${item.system}</span>
-                                <span class="px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-lg">${item.category}</span>
-                                <span class="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded-lg border border-amber-100">${item.status}</span>
-                            </div>
-                            <div class="flex flex-wrap gap-1">
-                                ${item.tags.map(tag => `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-md">#${tag}</span>`).join('')}
-                            </div>
-                        </div>
-                        <h3 class="text-base sm:text-lg font-bold text-slate-900 mb-2">${highlightText(item.title, searchInput.value)}</h3>
-                        <p class="text-xs sm:text-sm text-slate-600 mb-4 leading-relaxed">${item.description}</p>
-                        
-                        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
-                            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center">
-                                <svg class="w-4 h-4 mr-1 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                                対処手順・確認事項
-                            </h4>
-                            <ol class="list-decimal list-inside space-y-1.5 text-xs sm:text-sm text-slate-700">
-                                ${item.steps.map(step => `<li class="leading-normal">${step}</li>`).join('')}
-                            </ol>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
+    function linkifyUrlsWithPeriodBreaks(text) {
+      return String(text ?? '').split(/(https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+)/g).map((part, index) => {
+        if (index % 2 === 1) return linkifyUrls(part);
+        return escapeHtml(part.replace(/。(?=.)/g, '。\n'));
+      }).join('');
+    }
+    function linkifyUrls(str) {
+      const safeText = escapeHtml(String(str ?? ''));
+      return safeText.replace(/https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+/g, url =>
+        `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline decoration-amber-700/50 underline-offset-2 break-all hover:text-amber-800">${url}</a>`
+      );
+    }
 
-        function highlightText(text, query) {
-            if (!query) return text;
-            const escaped = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-            const regex = new RegExp(`(${escaped})`, 'gi');
-            return text.replace(regex, '<mark class="bg-amber-100 text-amber-900 px-0.5 rounded">$1</mark>');
-        }
+    function escapeJs(str) {
+      if (!str) return '';
+      return str.replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\n/g, '\\n');
+    }
 
-        searchInput.addEventListener('input', performSearch);
-        clearBtn.addEventListener('click', clearSearch);
+    // 初期化
+    fetchData();
+  </script>
 
-        window.onload = function() {
-            performSearch();
-        };
-    </script>
+
+  <!-- ページ上部に戻るボタン -->
+  <button
+    id="backToTop"
+    type="button"
+    aria-label="ページ上部に戻る"
+    title="ページ上部に戻る"
+    style="display:none; position:fixed; right:24px; bottom:24px; z-index:9999; width:48px; height:48px; border:0; border-radius:50%; background:#0f766e; color:white; font-size:24px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.2);"
+  >↑</button>
+
+  <script>
+    const backToTopButton = document.getElementById('backToTop');
+
+    window.addEventListener('scroll', function () {
+      backToTopButton.style.display = window.scrollY > 300 ? 'block' : 'none';
+    });
+
+    backToTopButton.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
 </body>
 </html>
