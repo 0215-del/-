@@ -111,9 +111,7 @@
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw4CR4Yh79rbVznHUClo5u89_0Ub28A55E_dI3w7vlxKmgjUf0IbfwZBpBppvm7G2M0BQ/exec";
 
-
-const SHARED_MEMO_URL = "https://script.google.com/macros/s/AKfycbx0s9EJI8RCnojpyXo0F80NWpLUhxmGshCvcC68MVdrlEOTGuJXpMW06WQW6v3yorWW_A/exec";
-
+    const SHARED_MEMO_URL = "https://script.google.com/macros/s/AKfycbx0s9EJI8RCnojpyXo0F80NWpLUhxmGshCvcC68MVdrlEOTGuJXpMW06WQW6v3yorWW_A/exec";
 
     let errorData = [];
     let currentSystem = 'all';
@@ -230,34 +228,31 @@ const SHARED_MEMO_URL = "https://script.google.com/macros/s/AKfycbx0s9EJI8RCnojp
               <div class="text-xs md:text-sm text-amber-950 leading-relaxed whitespace-pre-wrap">${linkifyUrlsWithPeriodBreaks(item.memo)}</div>
             </div>
           ` : ''}
-
         
-<details class="mt-4 border-t border-slate-100 pt-3">
-  <summary class="cursor-pointer select-none text-sm font-semibold text-slate-600 hover:text-teal-800">
-    担当者メモ（職場内共有）
-  </summary>
-  <div class="mt-3 space-y-2">
-    <p class="text-xs text-slate-500">
-      許可された職場アカウントで共有メモを開きます。
-      メモは共通の保存先に保存され、ほかの端末からも確認できます。
-      顧客名などの個人情報は入力しないでください。
-    </p>
-    <button
-      type="button"
-      onclick="openSharedMemo(this)"
-      class="rounded-lg bg-teal-700 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-800">
-      <i class="fa-solid fa-users mr-1"></i>
-      共有メモを開く
-    </button>
-  </div>
-</details>
-
+          <details class="mt-4 border-t border-slate-100 pt-3">
+            <summary class="cursor-pointer select-none text-sm font-semibold text-slate-600 hover:text-teal-800">
+              担当者メモ（職場内共有）
+            </summary>
+            <div class="mt-3 space-y-2">
+              <p class="text-xs text-slate-500">
+                許可された職場アカウントで共有メモを開きます。
+                メモは共通の保存先に保存され、ほかの端末からも確認できます。
+                顧客名などの個人情報は入力しないでください。
+              </p>
+              <button
+                type="button"
+                onclick="openSharedMemo(this)"
+                class="rounded-lg bg-teal-700 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-800">
+                <i class="fa-solid fa-users mr-1"></i>
+                共有メモを開く
+              </button>
+            </div>
+          </details>
         `;
         list.appendChild(card);
       });
     }
 
-    // シートの見出しが変更されても、既存列名・新しい列名のどちらからも読み取る。
     function normalizeArticle(row) {
       const pick = (...keys) => {
         for (const key of keys) {
@@ -285,60 +280,57 @@ const SHARED_MEMO_URL = "https://script.google.com/macros/s/AKfycbx0s9EJI8RCnojp
       for (let i = 0; i < normalized.length; i++) hash = Math.imul(hash ^ normalized.charCodeAt(i), 16777619);
       return (hash >>> 0).toString(36);
     }
-
   
-function openSharedMemo(button) {
-  const card = button.closest('[data-article-id]');
-  if (!card) {
-    alert('記事情報を取得できませんでした。');
-    return;
-  }
+    function openSharedMemo(button) {
+      const card = button.closest('[data-article-id]');
+      if (!card) {
+        alert('記事情報を取得できませんでした。');
+        return;
+      }
 
-  const articleId = card.dataset.articleId;
-  const titleElement = card.querySelector('h2');
-  const articleTitle = titleElement
-    ? titleElement.textContent.trim()
-    : 'FAQ';
+      const articleId = card.dataset.articleId;
+      const titleElement = card.querySelector('h2');
+      const articleTitle = titleElement ? titleElement.textContent.trim() : 'FAQ';
 
-  if (!articleId) {
-    alert('記事IDが確認できません。');
-    return;
-  }
+      if (!articleId) {
+        alert('記事IDが確認できません。');
+        return;
+      }
 
-  if (
-    !SHARED_MEMO_URL ||
-    SHARED_MEMO_URL.includes('ここに共有メモ用')
-  ) {
-    alert('共有メモ用ウェブアプリのURLを設定してください。');
-    return;
-  }
+      if (!SHARED_MEMO_URL || SHARED_MEMO_URL.includes('ここに共有メモ用')) {
+        alert('共有メモ用ウェブアプリのURLを設定してください。');
+        return;
+      }
 
-  const separator = SHARED_MEMO_URL.includes('?') ? '&' : '?';
-  const url = SHARED_MEMO_URL + separator +
-    'id=' + encodeURIComponent(articleId) +
-    '&title=' + encodeURIComponent(articleTitle);
+      const separator = SHARED_MEMO_URL.includes('?') ? '&' : '?';
+      const url = SHARED_MEMO_URL + separator +
+        'id=' + encodeURIComponent(articleId) +
+        '&title=' + encodeURIComponent(articleTitle);
 
-  window.open(url, '_blank', 'noopener');
-}
+      window.open(url, '_blank', 'noopener');
+    }
 
-
-    // 検索フィルタ（コード・質問・原因・手順・分類・メモを横断）
+    // ニュアンス検索フィルタ（裏側で同義語や関連ワードを自動展開してスッキリ検索）
     function filterData() {
-      const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja').replace(/[\s　]+/g, '');
+      const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja').replace(/[\s ]+/g, '');
       const input = document.getElementById('searchInput');
-      const rawTerms = input.value.trim().split(/[\s　]+/).filter(Boolean).map(normalize);
+      const rawTerms = input.value.trim().split(/[\s ]+/).filter(Boolean).map(normalize);
+      
+      // よくあるお困りごとのニュアンス・同義語自動展開辞書
       const synonymGroups = [
-        ['ログインできない', 'ログインできません', '入れない', 'ログイン不可', 'アクセスできない'],
-        ['送れない', '送信できない', '送信エラー', '送信失敗'],
+        ['ログインできない', 'ログインできません', '入れない', 'ログイン不可', 'アクセスできない', '認証エラー', 'パスワード'],
+        ['送れない', '送信できない', '送信エラー', '送信失敗', '未送信'],
         ['受け取れない', '受信できない', '受信エラー'],
         ['開けない', '開かない', '表示されない', '見られない'],
-        ['取り込めない', '取込できない', 'インポートできない'],
+        ['取り込めない', '取込できない', 'インポートできない', 'csv', 'データ'],
         ['出せない', '出力できない', 'エクスポートできない']
       ];
+
       const queryTerms = [...new Set(rawTerms.flatMap(term => {
-        const group = synonymGroups.find(items => items.some(item => normalize(item) === term));
+        const group = synonymGroups.find(items => items.some(item => normalize(item).includes(term) || term.includes(normalize(item))));
         return group ? [term, ...group.map(normalize)] : [term];
       }))];
+
       const clearBtn = document.getElementById('clearBtn');
       clearBtn.classList.toggle('hidden', queryTerms.length === 0);
       clearBtn.classList.toggle('flex', queryTerms.length > 0);
@@ -350,12 +342,17 @@ function openSharedMemo(button) {
         const itemIsKiban = String(code).startsWith('KIB-') || String(category).includes('介護情報基盤');
         if (currentSystem === 'kiban' && !itemIsKiban) return false;
         if (currentSystem === 'plan' && itemIsKiban) return false;
+        
         const searchable = [
           article.id, article.code, article.title, article.cause, article.solution,
           article.category, article.memo, article.confirmation,
           rawItem['解決確認'], rawItem['解決したかの確認'], rawItem['検索キーワード'], rawItem['言い換え'], rawItem['別の言い方'], rawItem['出典'], rawItem['出典元'], rawItem['メモ']
         ].map(normalize).join(' ');
-        return queryTerms.every(term => searchable.includes(term));
+
+        if (queryTerms.length === 0) return true;
+        
+        // ニュアンス検索：展開されたキーワードのいずれかに部分一致すればヒット
+        return queryTerms.some(term => searchable.includes(term));
       });
 
       filtered.sort((a, b) =>
@@ -379,7 +376,6 @@ function openSharedMemo(button) {
       document.getElementById('searchInput').focus();
     }
     
-
     function clearSearch() {
       document.getElementById('searchInput').value = '';
       filterData();
@@ -437,7 +433,6 @@ function openSharedMemo(button) {
     // 初期化
     fetchData();
   </script>
-
 
   <!-- ページ上部に戻るボタン -->
   <button
