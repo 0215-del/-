@@ -310,7 +310,7 @@
       window.open(url, '_blank', 'noopener');
     }
 
-    // ニュアンス検索フィルタ（147以降を含め、あいまい・同義語を柔軟に自動拡張）
+    // ニュアンス検索フィルタ（元の入力ワードを保持したまま同義語を拡張）
     function filterData() {
       const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja');
       const input = document.getElementById('searchInput');
@@ -320,7 +320,7 @@
       clearBtn.classList.toggle('hidden', rawQuery === '');
       clearBtn.classList.toggle('flex', rawQuery !== '');
 
-      // よくあるお困りごと・マニュアル項目のニュアンス・同義語マッピング（147以降対応含む）
+      // よくあるお困りごと・マニュアル項目のニュアンス・同義語マッピング
       const synonyms = {
         '介護web': ['介護web', '介護WEBサービスとは', 'サービス概要', '概要', '情報基盤'],
         'webサービス': ['介護web', '介護WEBサービスとは', 'サービス概要', '概要', '情報基盤'],
@@ -341,7 +341,7 @@
         'csv': ['csv', 'データ', '取り込み', '出力', '重複']
       };
 
-      // 入力されたキーワードに一致する同義語グループを展開
+      // 入力されたキーワードに一致する同義語グループを元の入力にプラスして展開
       let searchTerms = [rawQuery];
       for (const [key, terms] of Object.entries(synonyms)) {
         if (rawQuery.includes(key)) {
@@ -366,7 +366,7 @@
           rawItem['解決確認'], rawItem['解決したかの確認'], rawItem['検索キーワード'], rawItem['言い換え'], rawItem['別の言い方'], rawItem['出典'], rawItem['出典元'], rawItem['メモ']
         ].map(normalize).join(' ');
 
-        // 展開されたいずれかの同義語キーワードが含まれているか判定
+        // 展開されたいずれかの検索キーワードが含まれているか判定
         return searchTerms.some(term => searchable.includes(term));
       });
 
