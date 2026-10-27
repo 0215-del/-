@@ -263,11 +263,11 @@
       };
       const code = pick('エラーコード', 'code', 'エラーID');
       const fixedId = pick('faq_id', '記事ID', '固定ID', 'id');
-      const title = pick('エラー内容', '症状', '質問', 'タイトル', 'title');
-      const cause = pick('主な原因', '原因', '確認事項', '確認すること', 'cause');
-      const solution = pick('対処方法・ご案内手順', '対処方法・ご案内ステップ', '対処手順', '対処内容', '対処方法', 'ご案内手順', 'solution', 'steps');
-      const category = pick('カテゴリ', '分類', 'category');
-      const memo = pick('社内ナレッジ・過去事例', '社内ナレッジ', 'メモ', 'memo', '過去事例');
+      const title = pick('見出し（タイトル）', 'タイトル', 'エラー内容', '症状', '質問', 'title');
+      const cause = pick('主な原因', '原因', '確認事項', '確認すること', 'cause', '分類', 'カテゴリ');
+      const solution = pick('対処手順', '対処方法・ご案内手順', '対処方法・ご案内ステップ', '対処内容', '対処方法', 'ご案内手順', 'solution', 'steps');
+      const category = pick('id', 'カテゴリ', '分類', 'category');
+      const memo = pick('担当者メモ', '社内ナレッジ・過去事例', '社内ナレッジ', 'メモ', 'memo', '過去事例');
       const fallbackSeed = Object.keys(row || {}).sort().map(key => `${key}:${row[key]}`).join('|');
       const id = fixedId || code || `FAQ-${stableSlug(`${category}-${title || fallbackSeed}`)}`;
       const confirmation = pick('解決確認', '解決したかの確認', '解決確認事項');
@@ -310,7 +310,7 @@
       window.open(url, '_blank', 'noopener');
     }
 
-    // ニュアンス検索フィルタ（元の入力ワードを保持したまま同義語を拡張）
+    // ニュアンス検索フィルタ（全プロパティの値を対象にし、同義語も頑健に展開）
     function filterData() {
       const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja');
       const input = document.getElementById('searchInput');
@@ -341,7 +341,7 @@
         'csv': ['csv', 'データ', '取り込み', '出力', '重複']
       };
 
-      // 入力されたキーワードに一致する同義語グループを元の入力にプラスして展開
+      // 入力されたキーワードに一致する同義語グループを展開
       let searchTerms = [rawQuery];
       for (const [key, terms] of Object.entries(synonyms)) {
         if (rawQuery.includes(key)) {
@@ -360,11 +360,9 @@
         
         if (rawQuery === '') return true;
 
-        const searchable = [
-          article.id, article.code, article.title, article.cause, article.solution,
-          article.category, article.memo, article.confirmation,
-          rawItem['解決確認'], rawItem['解決したかの確認'], rawItem['検索キーワード'], rawItem['言い換え'], rawItem['別の言い方'], rawItem['出典'], rawItem['出典元'], rawItem['メモ']
-        ].map(normalize).join(' ');
+        // row（rawItem）のすべてのプロパティの値を結合して検索対象にする（網羅的検索）
+        const allRowValues = Object.values(rawItem).map(v => String(v ?? '')).join(' ');
+        const searchable = normalize(allRowValues + ' ' + Object.values(article).join(' '));
 
         // 展開されたいずれかの検索キーワードが含まれているか判定
         return searchTerms.some(term => searchable.includes(term));
