@@ -310,17 +310,21 @@
       window.open(url, '_blank', 'noopener');
     }
 
-    // ニュアンス検索フィルタ（全プロパティの値を対象にし、同義語も頑健に展開）
+    // ニュアンス検索フィルタ（強力なキーワード・スペース区切りマルチワード検索対応）
     function filterData() {
       const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja');
       const input = document.getElementById('searchInput');
-      const rawQuery = normalize(input.value).trim();
+      const rawQueryText = input.value;
+      const rawQuery = normalize(rawQueryText).trim();
       
       const clearBtn = document.getElementById('clearBtn');
       clearBtn.classList.toggle('hidden', rawQuery === '');
       clearBtn.classList.toggle('flex', rawQuery !== '');
 
-      // よくあるお困りごと・マニュアル項目のニュアンス・同義語マッピング
+      // 検索ワードをスペース（全角・半角）で分割して、複数キーワードすべてを含む（AND）または いずれかを含む（OR）柔軟な判定に対応
+      const userKeywords = rawQueryText.split(/[\s ]+/).map(k => normalize(k)).filter(k => k.length > 0);
+
+      // 同義語マッピング
       const synonyms = {
         '介護web': ['介護web', '介護WEBサービスとは', 'サービス概要', '概要', '情報基盤'],
         'webサービス': ['介護web', '介護WEBサービスとは', 'サービス概要', '概要', '情報基盤'],
@@ -341,14 +345,17 @@
         'csv': ['csv', 'データ', '取り込み', '出力', '重複']
       };
 
-      // 入力されたキーワードに一致する同義語グループを展開
+      // 検索クエリ全体または個別キーワードに同義語を紐付け
       let searchTerms = [rawQuery];
-      for (const [key, terms] of Object.entries(synonyms)) {
-        if (rawQuery.includes(key)) {
-          searchTerms = [...new Set([...searchTerms, ...terms])];
-          break;
+      userKeywords.forEach(kw => {
+        searchTerms.push(kw);
+        for (const [key, terms] of Object.entries(synonyms)) {
+          if (kw.includes(key)) {
+            searchTerms.push(...terms);
+          }
         }
-      }
+      });
+      searchTerms = [...new Set(searchTerms.filter(k => k.length > 0))];
 
       const filtered = errorData.filter(rawItem => {
         const article = normalizeArticle(rawItem);
@@ -360,11 +367,11 @@
         
         if (rawQuery === '') return true;
 
-        // row（rawItem）のすべてのプロパティの値を結合して検索対象にする（網羅的検索）
+        // 全プロパティの値を結合して検索対象にする
         const allRowValues = Object.values(rawItem).map(v => String(v ?? '')).join(' ');
         const searchable = normalize(allRowValues + ' ' + Object.values(article).join(' '));
 
-        // 展開されたいずれかの検索キーワードが含まれているか判定
+        // 入力されたキーワード群のいずれか、または同義語のいずれかが含まれていればヒット
         return searchTerms.some(term => searchable.includes(term));
       });
 
