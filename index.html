@@ -67,7 +67,7 @@
           type="text" 
           id="searchInput" 
           aria-label="検索キーワード"
-          placeholder="例：初期設定、電子証明書、CSV送信、エラーコード"
+          placeholder="例：初回登録、電子証明書、CSV送信、エラーコード"
           oninput="filterData()"
           class="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base md:text-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all duration-200"
         >
@@ -263,11 +263,11 @@
       };
       const code = pick('エラーコード', 'code', 'エラーID');
       const fixedId = pick('faq_id', '記事ID', '固定ID', 'id');
-      const title = pick('見出し（タイトル）', 'タイトル', 'エラー内容', '症状', '質問', 'title');
-      const cause = pick('主な原因', '原因', '確認事項', '確認すること', 'cause', '分類', 'カテゴリ');
-      const solution = pick('対処手順', '対処方法・ご案内手順', '対処方法・ご案内ステップ', '対処内容', '対処方法', 'ご案内手順', 'solution', 'steps');
-      const category = pick('id', 'カテゴリ', '分類', 'category');
-      const memo = pick('担当者メモ', '社内ナレッジ・過去事例', '社内ナレッジ', 'メモ', 'memo', '過去事例');
+      const title = pick('エラー内容', '症状', '質問', 'タイトル', 'title');
+      const cause = pick('主な原因', '原因', '確認事項', '確認すること', 'cause');
+      const solution = pick('対処方法・ご案内手順', '対処方法・ご案内ステップ', '対処手順', '対処内容', '対処方法', 'ご案内手順', 'solution', 'steps');
+      const category = pick('カテゴリ', '分類', 'category');
+      const memo = pick('社内ナレッジ・過去事例', '社内ナレッジ', 'メモ', 'memo', '過去事例');
       const fallbackSeed = Object.keys(row || {}).sort().map(key => `${key}:${row[key]}`).join('|');
       const id = fixedId || code || `FAQ-${stableSlug(`${category}-${title || fallbackSeed}`)}`;
       const confirmation = pick('解決確認', '解決したかの確認', '解決確認事項');
@@ -310,52 +310,35 @@
       window.open(url, '_blank', 'noopener');
     }
 
-    // ニュアンス検索フィルタ（強力なキーワード・スペース区切りマルチワード検索対応）
+    // ニュアンス検索フィルタ（裏側で同義語や関連ワードを自動展開してスッキリ検索）
     function filterData() {
       const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja');
       const input = document.getElementById('searchInput');
-      const rawQueryText = input.value;
-      const rawQuery = normalize(rawQueryText).trim();
+      const rawQuery = normalize(input.value).trim();
       
       const clearBtn = document.getElementById('clearBtn');
       clearBtn.classList.toggle('hidden', rawQuery === '');
       clearBtn.classList.toggle('flex', rawQuery !== '');
 
-      // 検索ワードをスペース（全角・半角）で分割して、複数キーワードすべてを含む（AND）または いずれかを含む（OR）柔軟な判定に対応
-      const userKeywords = rawQueryText.split(/[\s ]+/).map(k => normalize(k)).filter(k => k.length > 0);
-
-      // 同義語マッピング
+      // よくあるお困りごとのニュアンス・同義語マッピング
       const synonyms = {
-        '介護web': ['介護web', '介護WEBサービスとは', 'サービス概要', '概要', '情報基盤'],
-        'webサービス': ['介護web', '介護WEBサービスとは', 'サービス概要', '概要', '情報基盤'],
-        'スマホ': ['スマホ', 'モバイル端末', 'タブレット', 'ios', 'android'],
-        'タブレット': ['スマホ', 'モバイル端末', 'タブレット', 'ios', 'android'],
-        'パソコン': ['パソコン', 'windows', 'mac', '動作環境'],
         '送信できない': ['送信できない', '未送信', '送信失敗', '送れない', 'エラー'],
         '送れない': ['送信できない', '未送信', '送信失敗', '送れない', 'エラー'],
         '未送信': ['送信できない', '未送信', '送信失敗', '送れない', 'エラー'],
-        'ログインできない': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード', 'ワンタイム'],
-        'ログイン': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード', 'ワンタイム'],
-        'コードが来ない': ['ワンタイム認証コードが届かない', '届かない', 'コード', '迷惑メール', 'sms'],
-        '届かない': ['ワンタイム認証コードが届かない', '届かない', 'コード', '迷惑メール', 'sms'],
-        '電子証明書': ['電子証明書', '証明書', 'デジタル証明書', 'err_connection_closed'],
-        '証明書': ['電子証明書', '証明書', 'デジタル証明書', 'err_connection_closed'],
-        '見られない': ['見られない', '表示されない', '権限障害', '同意エラー', 'LIFE情報', '認定情報'],
-        '表示されない': ['見られない', '表示されない', '権限障害', '同意エラー', '24時間'],
-        'csv': ['csv', 'データ', '取り込み', '出力', '重複']
+        'ログインできない': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード'],
+        'ログイン': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード'],
+        '電子証明書': ['電子証明書', '証明書', 'デジタル証明書'],
+        'csv': ['csv', 'データ', '取り込み', '出力']
       };
 
-      // 検索クエリ全体または個別キーワードに同義語を紐付け
+      // 入力されたキーワードに一致する同義語グループを展開
       let searchTerms = [rawQuery];
-      userKeywords.forEach(kw => {
-        searchTerms.push(kw);
-        for (const [key, terms] of Object.entries(synonyms)) {
-          if (kw.includes(key)) {
-            searchTerms.push(...terms);
-          }
+      for (const [key, terms] of Object.entries(synonyms)) {
+        if (rawQuery.includes(key)) {
+          searchTerms = terms;
+          break;
         }
-      });
-      searchTerms = [...new Set(searchTerms.filter(k => k.length > 0))];
+      }
 
       const filtered = errorData.filter(rawItem => {
         const article = normalizeArticle(rawItem);
@@ -367,11 +350,13 @@
         
         if (rawQuery === '') return true;
 
-        // 全プロパティの値を結合して検索対象にする
-        const allRowValues = Object.values(rawItem).map(v => String(v ?? '')).join(' ');
-        const searchable = normalize(allRowValues + ' ' + Object.values(article).join(' '));
+        const searchable = [
+          article.id, article.code, article.title, article.cause, article.solution,
+          article.category, article.memo, article.confirmation,
+          rawItem['解決確認'], rawItem['解決したかの確認'], rawItem['検索キーワード'], rawItem['言い換え'], rawItem['別の言い方'], rawItem['出典'], rawItem['出典元'], rawItem['メモ']
+        ].map(normalize).join(' ');
 
-        // 入力されたキーワード群のいずれか、または同義語のいずれかが含まれていればヒット
+        // 展開されたいずれかの同義語キーワードが含まれているか判定
         return searchTerms.some(term => searchable.includes(term));
       });
 
