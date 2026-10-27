@@ -67,7 +67,7 @@
           type="text" 
           id="searchInput" 
           aria-label="検索キーワード"
-          placeholder="例：初回登録、電子証明書、CSV送信、エラーコード"
+          placeholder="例：初期設定、電子証明書、CSV送信、エラーコード"
           oninput="filterData()"
           class="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base md:text-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:bg-white transition-all duration-200"
         >
@@ -310,7 +310,7 @@
       window.open(url, '_blank', 'noopener');
     }
 
-    // ニュアンス検索フィルタ（裏側で同義語や関連ワードを自動展開してスッキリ検索）
+    // ニュアンス検索フィルタ（147以降を含め、あいまい・同義語を柔軟に自動拡張）
     function filterData() {
       const normalize = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja');
       const input = document.getElementById('searchInput');
@@ -320,22 +320,32 @@
       clearBtn.classList.toggle('hidden', rawQuery === '');
       clearBtn.classList.toggle('flex', rawQuery !== '');
 
-      // よくあるお困りごとのニュアンス・同義語マッピング
+      // よくあるお困りごと・マニュアル項目のニュアンス・同義語マッピング（147以降対応含む）
       const synonyms = {
+        '介護web': ['介護web', '介護WEBサービスとは', 'サービス概要', '概要', '情報基盤'],
+        'webサービス': ['介護web', '介護WEBサービスとは', 'サービス概要', '概要', '情報基盤'],
+        'スマホ': ['スマホ', 'モバイル端末', 'タブレット', 'ios', 'android'],
+        'タブレット': ['スマホ', 'モバイル端末', 'タブレット', 'ios', 'android'],
+        'パソコン': ['パソコン', 'windows', 'mac', '動作環境'],
         '送信できない': ['送信できない', '未送信', '送信失敗', '送れない', 'エラー'],
         '送れない': ['送信できない', '未送信', '送信失敗', '送れない', 'エラー'],
         '未送信': ['送信できない', '未送信', '送信失敗', '送れない', 'エラー'],
-        'ログインできない': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード'],
-        'ログイン': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード'],
-        '電子証明書': ['電子証明書', '証明書', 'デジタル証明書'],
-        'csv': ['csv', 'データ', '取り込み', '出力']
+        'ログインできない': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード', 'ワンタイム'],
+        'ログイン': ['ログインできない', 'ログイン', '入れない', 'ログイン不可', '認証', 'パスワード', 'ワンタイム'],
+        'コードが来ない': ['ワンタイム認証コードが届かない', '届かない', 'コード', '迷惑メール', 'sms'],
+        '届かない': ['ワンタイム認証コードが届かない', '届かない', 'コード', '迷惑メール', 'sms'],
+        '電子証明書': ['電子証明書', '証明書', 'デジタル証明書', 'err_connection_closed'],
+        '証明書': ['電子証明書', '証明書', 'デジタル証明書', 'err_connection_closed'],
+        '見られない': ['見られない', '表示されない', '権限障害', '同意エラー', 'LIFE情報', '認定情報'],
+        '表示されない': ['見られない', '表示されない', '権限障害', '同意エラー', '24時間'],
+        'csv': ['csv', 'データ', '取り込み', '出力', '重複']
       };
 
       // 入力されたキーワードに一致する同義語グループを展開
       let searchTerms = [rawQuery];
       for (const [key, terms] of Object.entries(synonyms)) {
         if (rawQuery.includes(key)) {
-          searchTerms = terms;
+          searchTerms = [...new Set([...searchTerms, ...terms])];
           break;
         }
       }
