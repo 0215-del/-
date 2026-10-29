@@ -129,6 +129,7 @@
     let currentSystem = 'all';
     let sharedMemoPresence = null;
     let sharedMemoPresenceRequested = false;
+    let sharedMemoPresenceFailed = false;
 
     const setupSequence = {
       'KIB-SET-001': { order: 10, label: '初期設定 1/4' },
@@ -277,12 +278,16 @@
       window[callbackName] = function(result) {
         if (result && !result.error) {
           sharedMemoPresence = result;
-          applySharedMemoPresence();
+        } else {
+          sharedMemoPresenceFailed = true;
         }
+        applySharedMemoPresence();
         delete window[callbackName];
         script.remove();
       };
       script.onerror = function() {
+        sharedMemoPresenceFailed = true;
+        applySharedMemoPresence();
         delete window[callbackName];
         script.remove();
       };
@@ -292,10 +297,17 @@
     }
 
     function applySharedMemoPresence() {
-      if (!sharedMemoPresence) return;
+      if (!sharedMemoPresence && !sharedMemoPresenceFailed) return;
       document.querySelectorAll('[data-shared-memo-status]').forEach(function(badge) {
         const card = badge.closest('[data-article-id]');
-        badge.style.display = card && sharedMemoPresence[card.dataset.articleId] ? 'inline-flex' : 'none';
+        const hasMemo = Boolean(card && sharedMemoPresence && sharedMemoPresence[card.dataset.articleId]);
+        badge.textContent = sharedMemoPresenceFailed ? '有無を確認できません' : (hasMemo ? '共有メモあり' : '共有メモなし');
+        badge.className = sharedMemoPresenceFailed
+          ? 'ml-2 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-bold text-amber-800'
+          : (hasMemo
+            ? 'ml-2 inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-bold text-violet-800'
+            : 'ml-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-500');
+        badge.style.display = 'inline-flex';
       });
     }
 
