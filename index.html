@@ -202,7 +202,7 @@
             ${item.category ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${item.category.includes('介護情報基盤') ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-teal-50 text-teal-800 border border-teal-200'}"><i class="fa-solid fa-tag text-[10px]"></i>${escapeHtml(item.category)}</span>` : ''}
             ${item.code ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-slate-100 text-slate-600"><i class="fa-solid fa-hashtag text-[10px]"></i>${escapeHtml(item.code)}</span>` : ''}
             ${setupSteps?.label ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">${escapeHtml(setupSteps.label)}</span>` : ''}
-            <span data-shared-memo-status hidden class="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-800"><i class="fa-solid fa-users"></i>共有メモあり</span>
+            <span data-shared-memo-status style="display:none" class="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-800"><i class="fa-solid fa-users"></i>共有メモあり</span>
           </div>
 
           <!-- タイトル -->
@@ -296,7 +296,7 @@
       if (!sharedMemoPresence) return;
       document.querySelectorAll('[data-shared-memo-status]').forEach(function(badge) {
         const card = badge.closest('[data-article-id]');
-        badge.hidden = !card || !sharedMemoPresence[card.dataset.articleId];
+        badge.style.display = card && sharedMemoPresence[card.dataset.articleId] ? 'inline-flex' : 'none';
       });
     }
 
